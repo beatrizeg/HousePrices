@@ -27,17 +27,17 @@ library(klaR)
 library(tictoc)
 
 #loading databases
-train <- read_csv(file='train.csv')
-test <- read_csv(file='test.csv')
+main <- read_csv(file='train.csv')
+tester <- read_csv(file='test.csv')
 
-train <- as.data.frame(train)
-test <- as.data.frame(test)
+main <- as.data.frame(train)
+tester <- as.data.frame(test)
 
 ## 1.2. Inspecting the dataset
 
-dim(train)
-summary(train)
+dim(main)
+summary(main)
 
 #check for NAs
-nas <- apply(train, 2, function(x) any(is.na(x)))
+nas <- apply(main, 2, function(x) any(is.na(x)))
 nas[which(nas)]
