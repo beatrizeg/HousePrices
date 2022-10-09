@@ -71,6 +71,8 @@ summary(main)
 
 The dataset consists of 1460 rows and 81 columns. We see that we have a mix of character and numeric values. 81 columns is quite a lot of columns as each of them would represent a feature and probably not all of them help predict the sale price of a house. We will try to reduce the number of columns early in the project to be able to work better with the data.
 
+### 1.2.1. Dealing with NAs <a name="nas"></a>
+
 First things first, let's check the NAs. To check which columns gives us NAs we use.
 
 ```{r nas}
@@ -120,6 +122,14 @@ main <- main %>% mutate(Alley=ifelse(is.na(Alley),'None',Alley),
                         MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
 ```
 
+### 1.2.2. Dealing with character variables <a name="character"></a>
+Also and because we have an important number of character features, none of them being unique or with high variability, these variables should be converted to factor so they take less memory and faster our computation. To do so, we can change all character variables to factor as one with:
+
+```{r factor}
+main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)], 
+                                                           as.factor)
+```
+
 Lastly, it is important to note that the Id column provides a unique Id to each house.
 
 # 2. METHOD AND ANALYSIS <a name="analysis"></a>
@@ -149,10 +159,20 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
                                  BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition)
+                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
 ```
 
 Now, from a start of 79 features, we continue with 71. 71 variables is still quite a lot.
 
 ### 2.1.2. Checking features correlation <a name="correlation"></a>
 
+Because we want to further study and understand if all 71 features should be kept in the model, we will now proceed with studying correlation among the different variables. For those that are high correlated to each other, only one of them should be kept in model disregarding the correlated ones.
+
+As we have both numeric and string values, we need to study correlation separately. We will start first with the numeric values
+
+```{r cor, fig.height=6}
+main_m.cor <- main_m %>%
+  dplyr::select_if(is.numeric) %>%
+  cor(.)
+corrplot(main_m.cor, type="lower", tl.cex = 0.5)
+```

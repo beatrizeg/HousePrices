@@ -67,6 +67,10 @@ main <- main %>% mutate(Alley=ifelse(is.na(Alley),'None',Alley),
                         Fence=ifelse(is.na(Fence),'None',Fence),
                         MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
 
+#change character variables to factor
+main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)], 
+                                           as.factor)
+
 #check for predictors with near zero variablity
 no_var <- nearZeroVar(main, saveMetrics = TRUE)
 no_var
@@ -80,4 +84,11 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
                                  BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition)
+                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
+#check for correlation
+main_m.cor <- main_m %>%
+  dplyr::select_if(is.numeric) %>%
+  cor(.)
+corrplot(main_m.cor, type="lower", tl.cex = 0.5)
+
