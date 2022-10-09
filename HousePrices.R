@@ -30,7 +30,7 @@ library(tictoc)
 main <- read_csv(file='train.csv')
 tester <- read_csv(file='test.csv')
 
-main <- as.data.frame(train)
+main <- as.data.frame(main)
 tester <- as.data.frame(test)
 
 ## 1.2. Inspecting the dataset
