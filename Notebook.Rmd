@@ -1,0 +1,158 @@
+---
+title: "R Notebook"
+author: "Beatriz Estrella"
+date: "26/10/2020"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 3)
+options(tinytex.verbose = TRUE)
+```
+
+# 1. INTRODUCTION <a name="introduction"></a>
+## 1.1. Project goal <a name="goal"></a>
+
+The motivation of this project is to complete the task of the course in Data Science: Capstone from HarvardX, course PH125.9x, under the *Choose your own!* project submission.
+
+Datasets, .R code and all relevant documentation regarding this project can be found online at [github.com/beatrizeg/Wish-Units-Solds](https://github.com/beatrizeg/Wish-Units-Solds).
+
+```{r load Data and libraries, echo=FALSE}
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
+if(!require(purrr)) install.packages("purrr", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(corrplot)) install.packages("corrplot", repos = "http://cran.us.r-project.org")
+if(!require(forcats)) install.packages("forcats", repos = "http://cran.us.r-project.org")
+if(!require(rattle)) install.packages("rattle", repos = "http://cran.us.r-project.org")
+if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
+if(!require(klaR)) install.packages("klaR", repos = "http://cran.us.r-project.org")
+if(!require(h2o)) install.packages("h2o", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(tictoc)) install.packages("tictoc", repos = "http://cran.us.r-project.org")
+
+library(tidyverse)
+library(stringr)
+library(purrr)
+library(caret)
+library(ggplot2)
+library(corrplot)
+library(forcats)
+library(rattle)
+library(xgboost)
+library(klaR)
+library(knitr)
+library(tictoc)
+
+#loading databases
+url_train <- "https://raw.githubusercontent.com/beatrizeg/HousePrices/main/train.csv"
+dest_file <- "./main.csv"
+download.file(url_train, destfile = dest_file)
+main <- read_csv("./main.csv")
+
+url_test <- "https://raw.githubusercontent.com/beatrizeg/HousePrices/main/test.csv"
+dest_file_tester <- "./tester.csv"
+download.file(url_test, destfile = dest_file_tester)
+test <- read_csv("./tester.csv")
+
+main <- as.data.frame(main)
+tester <- as.data.frame(test)
+```
+
+## 1.2. Inspecting the dataset <a name="inspect"></a>
+
+Now we proceed to inspect the main dataset that is directly downloaded from Kaggle. Using the dim and summary functions we see:
+
+```{r inspect}
+dim(main)
+summary(main)
+```
+
+The dataset consists of 1460 rows and 81 columns. We see that we have a mix of character and numeric values. 81 columns is quite a lot of columns as each of them would represent a feature and probably not all of them help predict the sale price of a house. We will try to reduce the number of columns early in the project to be able to work better with the data.
+
+First things first, let's check the NAs. To check which columns gives us NAs we use.
+
+```{r nas}
+nas <- apply(main, 2, function(x) any(is.na(x)))
+knitr::kable(nas[which(nas)], caption = "Check columns with NAs")
+```
+
+We see that from a total of 81 columns, 19 of them contain NAs. If we check the data description file, let's describe each of these columns.
+
+· LotFrontage: This is a numeric value that represents linear feet of street connected to property -> we have a total of *259/1460=17.7%* which can be acceptable.
+· Alley: This is a character value in which NA represents that there is no alley access.
+· MasVnrType: This is a character value in which NA is a *not applicable* value. Let's check how many of them we have.
+```{r nas MasVnrType}
+sum(is.na(main$MasVnrType))
+```
+We only have 8 values with NA so is does not seem like a reason to disregard the column data. 
+· MasVnrArea: same as before, in this case it is a numeric value with same number of NAs.
+· BsmtQual: it evaluates the height of the basement in a categorical value and we have 37 NAs.
+· BsmtCond: evaluates the general condition of the basement and gives the same result as previous line.
+· BsmtExposure, BsmtFinType1 and BsmtFinType2: gives NAs as well in case of no basement.
+· Electrical: categorical feature with only 1 NA.
+· FireplaceQu: it is a categorical value that provides the fireplace quality. NA represents no fireplace and in this case we get 690 values.
+· Garage: all garage related features. They show different aspects of garages and NAs represent no garage.
+· PoolQC: it shows pool quality and NA represents No Pool.
+· Fence: represents fence quality and NA respresents No Fence.
+· MiscFeature: it is a categorical miscellaneous feature such as elevator, tennis court, etc. NA represents None.
+
+Let's clean all of these NAs in the dataset as per data description. We will leave the NAs in LotFrontage and Electrical because we do not know what they mean in the dataset.
+
+```{r nas treat}
+main <- main %>% mutate(Alley=ifelse(is.na(Alley),'None',Alley),
+                        MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
+                        MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
+                        BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
+                        BsmtCond=ifelse(is.na(BsmtCond),'None',BsmtCond),
+                        BsmtExposure=ifelse(is.na(BsmtExposure),'None',BsmtExposure),
+                        BsmtFinType1=ifelse(is.na(BsmtFinType1),'None',BsmtFinType1),
+                        BsmtFinType2=ifelse(is.na(BsmtFinType2),'None',BsmtFinType2),
+                        FireplaceQu=ifelse(is.na(FireplaceQu),'None',FireplaceQu),
+                        GarageType=ifelse(is.na(GarageType),'None',GarageType),
+                        GarageYrBlt=ifelse(is.na(GarageYrBlt),'None',GarageYrBlt),
+                        GarageFinish=ifelse(is.na(GarageFinish),'None',GarageFinish),
+                        GarageQual=ifelse(is.na(GarageQual),'None',GarageQual),
+                        GarageCond=ifelse(is.na(GarageCond),'None',GarageCond),
+                        PoolQC=ifelse(is.na(PoolQC),'None',PoolQC),
+                        Fence=ifelse(is.na(Fence),'None',Fence),
+                        MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
+```
+
+Lastly, it is important to note that the Id column provides a unique Id to each house.
+
+# 2. METHOD AND ANALYSIS <a name="analysis"></a>
+## 2.1. Exploration of the dataset <a name="exploration"></a>
+
+Now we proceed to inspect the different features/variables in the dataset, taking into account that the value we want to be able to predict is *SalePrice*. 
+
+### 2.1.1. Checking features variability and adjusting <a name="variability"></a>
+
+Because checking 79 features one by one to analyze variability can take too long, let's start with analyzing those predictors that maintain close to same value across all the same to check if we want to disregard them.
+
+```{r no_var}
+no_var <- nearZeroVar(main, saveMetrics = TRUE)
+knitr::kable(no_var[no_var[,"zeroVar"] + no_var[,"nzv"] > 0, ], 
+             caption = "Predictors with near zero variability")
+```
+
+We do not get any feature with Zero Variance but we do get quite an important number of features with NearZeroVariance. Among all of them, we will eliminate from our model *Street*, *Alley*, *Condition2*, *RoofMatl*,*BsmtFinType2* and *BsmtFinSF2*, *LowQualFinSF* and *PoolQC*, as these are the variables with less variability and per the data description, we understand they have the less impact in a house sale price.
+
+```{r select, echo=FALSE}
+main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
+                                 LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                                 YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                 Foundation,BsmtQual,
+                                 BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtFinType2,BsmtFinSF2,BsmtUnfSF,TotalBsmtSF,
+                                 Heating,HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",LowQualFinSF,GrLivArea,BsmtFullBath,
+                                 BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
+                                 Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
+                                 GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
+                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition)
+```
+
+Now, from a start of 79 features, we continue with 71. 71 variables is still quite a lot.
+
+### 2.1.2. Checking features correlation <a name="correlation"></a>
+
