@@ -49,7 +49,8 @@ summary(main)
 nas <- apply(main, 2, function(x) any(is.na(x)))
 nas[which(nas)]
 
-main <- main %>% mutate(Alley=ifelse(is.na(Alley),'None',Alley),
+main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
+                        Alley=ifelse(is.na(Alley),'None',Alley),
                         MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
                         MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
                         BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
@@ -91,4 +92,36 @@ main_m.cor <- main_m %>%
   dplyr::select_if(is.numeric) %>%
   cor(.)
 corrplot(main_m.cor, type="lower", tl.cex = 0.5)
+
+write_csv(main_m.cor, "main_cor.csv")
+
+highlyCorrelated <- caret::findCorrelation(main_m.cor, cutoff=0.7, names = TRUE)
+
+main_m.chisq <- main_m %>%
+  dplyr::select_if(function(col) is.character(col) | 
+                     is.factor(col) | is.logical(col) |
+                     all(col == .$SalePrice)) %>% dplyr::select(-.$Id)
+
+columns <- 1:ncol(main_m.chisq)
+vars <- names(main_m.chisq)[columns]
+out <-  apply( combn(columns,2),2,function(x){
+  chisq.test(table(main_m.chisq[,x[1]],main_m.chisq[,x[2]]),correct=F)$p.value
+})
+
+out <- cbind(as.data.frame(t(combn(vars,2))),out)
+
+out_dep <- out %>% filter(V2=="SalePrice") %>% filter(out<0.05) %>% arrange(out)
+out_ind <- out %>% filter(V2=="SalePrice") %>% filter(out>=0.05) %>% arrange(out)
+
+main_red <- main_m %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, LotConfig,
+                                   LandSlope,Neighborhood,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                                   YearRemodAdd,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                   Foundation,BsmtQual,
+                                   BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtFinType2,BsmtFinSF2,BsmtUnfSF,TotalBsmtSF,
+                                   Heating,CentralAir,Electrical,"2ndFlrSF",LowQualFinSF,BsmtFullBath,
+                                   BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                                   Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,WoodDeckSF,
+                                   OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
+                                   MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
 

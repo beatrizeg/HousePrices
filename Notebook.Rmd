@@ -82,7 +82,7 @@ knitr::kable(nas[which(nas)], caption = "Check columns with NAs")
 
 We see that from a total of 81 columns, 19 of them contain NAs. If we check the data description file, let's describe each of these columns.
 
-· LotFrontage: This is a numeric value that represents linear feet of street connected to property -> we have a total of *259/1460=17.7%* which can be acceptable.
+· LotFrontage: This is a numeric value that represents linear feet of street connected to property -> we have a total of *259/1460=17.7%* which can be acceptable to keep this data but NAs will be substituted by 0 so that we can perform calculations with this data.
 · Alley: This is a character value in which NA represents that there is no alley access.
 · MasVnrType: This is a character value in which NA is a *not applicable* value. Let's check how many of them we have.
 ```{r nas MasVnrType}
@@ -103,7 +103,8 @@ We only have 8 values with NA so is does not seem like a reason to disregard the
 Let's clean all of these NAs in the dataset as per data description. We will leave the NAs in LotFrontage and Electrical because we do not know what they mean in the dataset.
 
 ```{r nas treat}
-main <- main %>% mutate(Alley=ifelse(is.na(Alley),'None',Alley),
+main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
+                        Alley=ifelse(is.na(Alley),'None',Alley),
                         MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
                         MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
                         BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
@@ -164,11 +165,11 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
 
 Now, from a start of 79 features, we continue with 71. 71 variables is still quite a lot.
 
-### 2.1.2. Checking features correlation <a name="correlation"></a>
+## 2.2. Studying correlation between variables <a name="cor"></a>
 
 Because we want to further study and understand if all 71 features should be kept in the model, we will now proceed with studying correlation among the different variables. For those that are high correlated to each other, only one of them should be kept in model disregarding the correlated ones.
 
-As we have both numeric and string values, we need to study correlation separately. We will start first with the numeric values
+As we have both numeric and string values, we need to study correlation separately. We will start first with the numeric values.
 
 ```{r cor, fig.height=6}
 main_m.cor <- main_m %>%
@@ -176,3 +177,49 @@ main_m.cor <- main_m %>%
   cor(.)
 corrplot(main_m.cor, type="lower", tl.cex = 0.5)
 ```
+
+When looking at the results we can see different interesting things. 
+
+First of all, let's look at the SalePrice row, this is our dependent variable that we are trying to predict. We can see which features are most affecting the sale price of a house and which ones are independent. For example, the Overall Condition and the GrLivArea or Garage Car increases the Sale Price of a house. We can be tempted now to disregard the variables that seem to be independent of the Sale Price but, this is important, there are way better methods to do so and we can be disregarding some variables that affect other variables that highly affect the Sale Price, thus they can be important to keep.
+
+What we want to do here is check the pair of variables that have a high correlation and remove one of them. For this, we can use the findCorrelation function from caret library. We see that the function recommends disregarding variable GrLivArea, which is highly correlated to TotRmsAbvGrd, also 1stFlrSF, which is highly correlated to TotalBsmtST and GarageCars, highly correlated to GarageArea.
+
+```{r cor findcor}
+highlyCorrelated <- caret::findCorrelation(main_m.cor, cutoff=0.7, names = TRUE)
+```
+
+We will remove those 3 variables from the ongoing model. Also, worth mentioning that of course, our SalePrice variable cannot be remove as this is the variable we are trying to predict.
+
+To study correlation between non numerical variables, we will perform a Chi-squared test of independence, looking at the p-values. We can say that two different variables are independent if the probability distribution of one is not affected by the presence of the other.
+
+In this case, the null hypotheses is that the variables are independent from the units sold. With a significance level of 0.05, we will test the hypotheses of them being independent.
+```{r chisq dep}
+main_m.chisq <- main_m %>%
+  dplyr::select_if(function(col) is.character(col) | 
+                     is.factor(col) | is.logical(col) |
+                     all(col == .$SalePrice)) %>% dplyr::select(-.$Id)
+
+columns <- 1:ncol(main_m.chisq)
+vars <- names(main_m.chisq)[columns]
+out <-  apply( combn(columns,2),2,function(x){
+  chisq.test(table(main_m.chisq[,x[1]],main_m.chisq[,x[2]]),correct=F)$p.value
+})
+
+out <- cbind(as.data.frame(t(combn(vars,2))),out)
+out_dep <- out %>% filter(V2=="SalePrice") %>% filter(out<0.05) %>% arrange(out)
+knitr::kable(out, caption = "Dependent categorical variables from SalePrice")
+```
+
+```{r chisq indep}
+out_ind <- out %>% filter(V2=="SalePrice") %>% filter(out>=0.05) %>% arrange(out)
+knitr::kable(out_ind, caption = "Independent categorical variables from SalePrice")
+```
+
+We can see that we get p-values below 0.05 for 18 variables, thus, we can reject in these cases the null hypothesis and assume that these are not independent to SalePrice. 
+
+Also, we can assume that these 23 other predictors are independent and do not affect the output of the units sold. In fact, 14 of them have a p-value over 0.9 indicating that they are with a probability over 99% independent on the SalePrice. 
+
+We will be able to check on this when we study the variable importance of the machine learning algorithms.
+
+## 2.3. Checking predictors effect - graphs <a name="graphs"></a>
+
