@@ -207,7 +207,7 @@ out <-  apply( combn(columns,2),2,function(x){
 
 out <- cbind(as.data.frame(t(combn(vars,2))),out)
 out_dep <- out %>% filter(V2=="SalePrice") %>% filter(out<0.05) %>% arrange(out)
-knitr::kable(out, caption = "Dependent categorical variables from SalePrice")
+knitr::kable(out_dep, caption = "Dependent categorical variables from SalePrice")
 ```
 
 ```{r chisq indep}
@@ -223,3 +223,96 @@ We will be able to check on this when we study the variable importance of the ma
 
 ## 2.3. Checking predictors effect - graphs <a name="graphs"></a>
 
+**ExterQual** = Quality of material on the exterior
+As expected, the Excellent gives higher Sale Prices, then God, Average, Fair and Poor lastly.
+
+```{r exterqual graph, echo=FALSE}
+main_m %>% 
+  ggplot(aes(fct_infreq(ExterQual), SalePrice)) + geom_boxplot() +
+  ggtitle("ExterQual") + xlab("ExterQual")
+```
+
+**ExterQual** = Quality of material on the exterior
+```{r Kitchenqual graph, echo=FALSE}
+main_m %>% 
+  ggplot(aes(fct_infreq(KitchenQual), SalePrice)) + geom_boxplot() +
+  ggtitle("KitchenQual") + xlab("KitchenQual")
+```
+
+```{r other graph, echo=FALSE}
+
+main_m %>% 
+  ggplot(aes(fct_infreq(Heating), SalePrice)) + geom_boxplot() +
+  ggtitle("Heating") + xlab("Heating")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_boxplot() +
+  ggtitle("Neighborhood") + xlab("Neighborhood")
+
+#categorical independent
+main_m %>% 
+  ggplot(aes(fct_infreq(GarageYrBlt), SalePrice)) + geom_boxplot() +
+  ggtitle("GarageYrBlt") + xlab("GarageYrBlt")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(BldgType), SalePrice)) + geom_boxplot() +
+  ggtitle("BldgType") + xlab("BldgType")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(PoolQC), SalePrice)) + geom_boxplot() +
+  ggtitle("PoolQC") + xlab("PoolQC")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(MiscFeature), SalePrice)) + geom_boxplot() +
+  ggtitle("MiscFeature") + xlab("MiscFeature")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(OverallCond), SalePrice)) + geom_boxplot() +
+  ggtitle("OverallCond") + xlab("OverallCond")
+
+main_m %>% 
+  ggplot(aes(SaleType, SalePrice)) + geom_jitter(aes(color=SaleCondition)) +
+  ggtitle("SaleType") + xlab("SaleType")
+
+main_m %>% 
+  ggplot(aes(LotShape, SalePrice)) + geom_jitter(aes(color=LotConfig)) +
+  ggtitle("LotShape") + xlab("LotShape")
+
+#numerical
+main_m %>% 
+  ggplot(aes(GrLivArea, SalePrice)) + geom_smooth() +
+  ggtitle("GrLivArea") + xlab("GrLivArea")
+
+main_m %>% 
+  ggplot(aes(GarageCars, SalePrice)) + geom_jitter(aes(color=BldgType)) +
+  ggtitle("GarageCars") + xlab("GarageCars")
+
+main_m %>% 
+  ggplot(aes(TotalBsmtSF, SalePrice)) + geom_jitter(aes(color=BsmtCond)) +
+  ggtitle("TotalBsmtSF") + xlab("TotalBsmtSF")
+
+main_m %>% 
+  ggplot(aes(YrSold, SalePrice)) + geom_jitter(aes(color=YearBuilt)) +
+  ggtitle("YrSold") + xlab("YrSold")
+```
+
+## 2.4. Creation of train and test set <a name="sets"></a>
+
+We split our data into a train set where we run the algorithms, and a test set to test the results and see how good our algorithm did. Test set usually consists of 10%-20% of the data. In our case, test set will have 15% of the data and train set 85%. As we do not have too much data, we do not want to compromise test set to have very few rows, or train set to not be big enough to produce good models.
+
+Our train set consists of 1138 rows and test set of 203 rows.
+
+```{r train test}
+set.seed(1, sample.kind = "Rounding")
+test_index <- createDataPartition(main_m$SalePrice, times=1, p=0.15, list=FALSE)
+train_set <- main_m[-test_index,] %>% dplyr::select(-Id)
+test_set <- main_m[test_index,] %>% dplyr::select(-Id) 
+```
+
+## 2.5. Method <a name="methods"></a>
+
+The method will be to train different Machine Learning algorithms, that are included in `caret` package. We will train the models using only the train_set, while repeated cross-validation or simple cross-validation will be used to optimize the hyperparameters of each model. Once the model is optimized using only the train_set, results will be tested in test_set.
+
+The methods to use are those appropriate to study a regression problem such as this one. Thus, we will be using *Linear Models*, *Logistic Regression*, *Neural Network Models*, *Random Forest* or *Lasso Regression*.
+
+As well, `h2o` package will be used at the end, to check which is the best performer model and compare results.

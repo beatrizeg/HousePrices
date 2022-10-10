@@ -72,6 +72,10 @@ main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
 main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)], 
                                            as.factor)
 
+main$MSSubClass <- factor(main$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
+main$OverallCond <- factor(main$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
+main$OverallQual <- factor(main$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
+
 #check for predictors with near zero variablity
 no_var <- nearZeroVar(main, saveMetrics = TRUE)
 no_var
@@ -93,7 +97,7 @@ main_m.cor <- main_m %>%
   cor(.)
 corrplot(main_m.cor, type="lower", tl.cex = 0.5)
 
-write_csv(main_m.cor, "main_cor.csv")
+write_csv(as.data.frame(main_m.cor), "main_cor.csv")
 
 highlyCorrelated <- caret::findCorrelation(main_m.cor, cutoff=0.7, names = TRUE)
 
@@ -123,5 +127,76 @@ main_red <- main_m %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotA
                                    Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,WoodDeckSF,
                                    OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
                                    MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+## 2.3. Checking predictors effect
 
+#categorical dependent
+main_m %>% 
+  ggplot(aes(fct_infreq(ExterQual), SalePrice)) + geom_boxplot() +
+  ggtitle("ExterQual") + xlab("ExterQual")
 
+main_m %>% 
+  ggplot(aes(fct_infreq(KitchenQual), SalePrice)) + geom_boxplot() +
+  ggtitle("KitchenQual") + xlab("KitchenQual")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(Heating), SalePrice)) + geom_boxplot() +
+  ggtitle("Heating") + xlab("Heating")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_boxplot() +
+  ggtitle("Neighborhood") + xlab("Neighborhood")
+
+#categorical independent
+main_m %>% 
+  ggplot(aes(fct_infreq(GarageYrBlt), SalePrice)) + geom_boxplot() +
+  ggtitle("GarageYrBlt") + xlab("GarageYrBlt")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(BldgType), SalePrice)) + geom_boxplot() +
+  ggtitle("BldgType") + xlab("BldgType")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(PoolQC), SalePrice)) + geom_boxplot() +
+  ggtitle("PoolQC") + xlab("PoolQC")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(MiscFeature), SalePrice)) + geom_boxplot() +
+  ggtitle("MiscFeature") + xlab("MiscFeature")
+
+main_m %>% 
+  ggplot(aes(fct_infreq(OverallCond), SalePrice)) + geom_boxplot() +
+  ggtitle("OverallCond") + xlab("OverallCond")
+
+main_m %>% 
+  ggplot(aes(SaleType, SalePrice)) + geom_jitter(aes(color=SaleCondition)) +
+  ggtitle("SaleType") + xlab("SaleType")
+
+main_m %>% 
+  ggplot(aes(LotShape, SalePrice)) + geom_jitter(aes(color=LotConfig)) +
+  ggtitle("LotShape") + xlab("LotShape")
+
+#numerical
+main_m %>% 
+  ggplot(aes(GrLivArea, SalePrice)) + geom_smooth() +
+  ggtitle("GrLivArea") + xlab("GrLivArea")
+
+main_m %>% 
+  ggplot(aes(GarageCars, SalePrice)) + geom_jitter(aes(color=BldgType)) +
+  ggtitle("GarageCars") + xlab("GarageCars")
+
+main_m %>% 
+  ggplot(aes(TotalBsmtSF, SalePrice)) + geom_jitter(aes(color=BsmtCond)) +
+  ggtitle("TotalBsmtSF") + xlab("TotalBsmtSF")
+
+main_m %>% 
+  ggplot(aes(YrSold, SalePrice)) + geom_jitter(aes(color=YearBuilt)) +
+  ggtitle("YrSold") + xlab("YrSold")
+
+##2.4. Create Data Partition
+
+set.seed(1, sample.kind = "Rounding")
+test_index <- createDataPartition(main_m$SalePrice, times=1, p=0.15, list=FALSE)
+train_set <- main_m[-test_index,] %>% dplyr::select(-Id)
+test_set <- main_m[test_index,] %>% dplyr::select(-Id) 
+
+##2.5. Method

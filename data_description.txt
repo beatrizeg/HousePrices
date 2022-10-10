@@ -153,7 +153,7 @@ OverallQual: Rates the overall material and finish of the house
 
        10	Very Excellent
        9	Excellent
-       8	Very Good
+       8	Very Good"
        7	Good
        6	Above Average
        5	Average
