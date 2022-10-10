@@ -51,6 +51,7 @@ nas[which(nas)]
 
 main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
                         Alley=ifelse(is.na(Alley),'None',Alley),
+                        Electrical=ifelse(is.na(Electrical),'Unknown',Electrical),
                         MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
                         MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
                         BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
@@ -75,6 +76,8 @@ main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)],
 main$MSSubClass <- factor(main$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
 main$OverallCond <- factor(main$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
 main$OverallQual <- factor(main$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
+main$YrSold <- factor(main$YrSold, levels=c("2006","2007","2008","2009","2010"))
+main$MoSold <- factor(main$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
 
 #check for predictors with near zero variablity
 no_var <- nearZeroVar(main, saveMetrics = TRUE)
@@ -91,7 +94,7 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
                                  PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
 
-#check for correlation
+## 2.2. Studying correlation between variables <a name="cor"></a>
 main_m.cor <- main_m %>%
   dplyr::select_if(is.numeric) %>%
   cor(.)
@@ -127,6 +130,7 @@ main_red <- main_m %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotA
                                    Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,WoodDeckSF,
                                    OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
                                    MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
 ## 2.3. Checking predictors effect
 
 #categorical dependent
@@ -200,3 +204,24 @@ train_set <- main_m[-test_index,] %>% dplyr::select(-Id)
 test_set <- main_m[test_index,] %>% dplyr::select(-Id) 
 
 ##2.5. Method
+
+# 3. RESULTS
+## 3.1. LM
+
+tic("Logistic Regression")
+set.seed(1, sample.kind = "Rounding")
+train_lm <- caret::train(SalePrice ~ ., data=train_set, method="lm",
+                         trControl=trainControl(method = "cv", number=5))
+
+lm_toc <- toc()
+ggplot(train_lm)
+
+y_lm <- predict(train_lm, test_set)
+rmse_lm <- RMSE(y_lm, test_set$SalePrice)
+rmse_results <- tibble(method = "LM", 
+                      RMSE_Train = max(train_lm$results$RMSE), 
+                      RMSE_Test = rmse_lm,
+                      Time = lm_toc$toc - lm_toc$tic)
+
+lm_imp <- varImp(train_lm)
+plot(lm_imp, top = 10, main="Variable Importance Linear Regression")

@@ -105,6 +105,7 @@ Let's clean all of these NAs in the dataset as per data description. We will lea
 ```{r nas treat}
 main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
                         Alley=ifelse(is.na(Alley),'None',Alley),
+                        Electrical=ifelse(is.na(Electrical),'Unknown',Electrical),
                         MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
                         MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
                         BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
@@ -123,12 +124,18 @@ main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
                         MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
 ```
 
-### 1.2.2. Dealing with character variables <a name="character"></a>
-Also and because we have an important number of character features, none of them being unique or with high variability, these variables should be converted to factor so they take less memory and faster our computation. To do so, we can change all character variables to factor as one with:
+### 1.2.2. Dealing with factor variables <a name="character"></a>
+Also and because we have an important number of character features, none of them being unique or with high variability, these variables should be converted to factor so they take less memory and faster our computation. Also, we will change numeric variables MSSubClass, OverallCond, OverallQual, YrSold and MoSold to factor as well. To do so, we can change all character variables to factor as one with:
 
 ```{r factor}
 main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)], 
                                                            as.factor)
+
+main$MSSubClass <- factor(main$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
+main$OverallCond <- factor(main$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
+main$OverallQual <- factor(main$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
+main$YrSold <- factor(main$YrSold, levels=c("2006","2007","2008","2009","2010"))
+main$MoSold <- factor(main$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
 ```
 
 Lastly, it is important to note that the Id column provides a unique Id to each house.
@@ -215,9 +222,9 @@ out_ind <- out %>% filter(V2=="SalePrice") %>% filter(out>=0.05) %>% arrange(out
 knitr::kable(out_ind, caption = "Independent categorical variables from SalePrice")
 ```
 
-We can see that we get p-values below 0.05 for 18 variables, thus, we can reject in these cases the null hypothesis and assume that these are not independent to SalePrice. 
+We can see that we get p-values below 0.05 for 19 variables, thus, we can reject in these cases the null hypothesis and assume that these are not independent to SalePrice. 
 
-Also, we can assume that these 23 other predictors are independent and do not affect the output of the units sold. In fact, 14 of them have a p-value over 0.9 indicating that they are with a probability over 99% independent on the SalePrice. 
+Also, we can assume that these 25 other predictors are independent and do not affect the output of the units sold. In fact, 14 of them have a p-value over 0.9 indicating that they are with a probability over 99% independent on the SalePrice. 
 
 We will be able to check on this when we study the variable importance of the machine learning algorithms.
 
@@ -313,6 +320,10 @@ test_set <- main_m[test_index,] %>% dplyr::select(-Id)
 
 The method will be to train different Machine Learning algorithms, that are included in `caret` package. We will train the models using only the train_set, while repeated cross-validation or simple cross-validation will be used to optimize the hyperparameters of each model. Once the model is optimized using only the train_set, results will be tested in test_set.
 
-The methods to use are those appropriate to study a regression problem such as this one. Thus, we will be using *Linear Models*, *Logistic Regression*, *Neural Network Models*, *Random Forest* or *Lasso Regression*.
+The methods to use are those appropriate to study a regression problem such as this one. Thus, we will be using *Linear Regression Model*, *Neural Network Models*, *Random Forest*, *SVM* or *Lasso Regression*.
 
 As well, `h2o` package will be used at the end, to check which is the best performer model and compare results.
+
+# 3. RESULTS <a name="results"></a>
+
+## 3.1. GAM Loess <a name="gam"></a>
