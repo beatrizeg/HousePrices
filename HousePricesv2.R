@@ -28,99 +28,93 @@ library(tictoc)
 
 #loading databases
 url_train <- "https://raw.githubusercontent.com/beatrizeg/HousePrices/main/train.csv"
-dest_file <- "./main.csv"
+dest_file <- "./train.csv"
 download.file(url_train, destfile = dest_file)
-main <- read_csv("./main.csv")
+train <- read_csv("./train.csv")
 
 url_test <- "https://raw.githubusercontent.com/beatrizeg/HousePrices/main/test.csv"
-dest_file_tester <- "./tester.csv"
-download.file(url_test, destfile = dest_file_tester)
-test <- read_csv("./tester.csv")
+dest_file_test <- "./test.csv"
+download.file(url_test, destfile = dest_file_test)
+test <- read_csv("./test.csv")
 
-main <- as.data.frame(main)
-tester <- as.data.frame(test)
+train <- as.data.frame(train)
+test <- as.data.frame(test)
+test <- test %>% add_column(SalePrice = 0)
+total <- rbind(train,test)
 
 ## 1.2. Inspecting the dataset
 
-dim(main)
-summary(main)
+dim(train)
+summary(total)
 
 #check for NAs
-nas <- apply(main, 2, function(x) any(is.na(x)))
+nas <- apply(total, 2, function(x) any(is.na(x)))
 nas[which(nas)]
 
-main <- main %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
-                        Alley=ifelse(is.na(Alley),'None',Alley),
-                        Electrical=ifelse(is.na(Electrical),'Unknown',Electrical),
-                        MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
-                        MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
-                        BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
-                        BsmtCond=ifelse(is.na(BsmtCond),'None',BsmtCond),
-                        BsmtExposure=ifelse(is.na(BsmtExposure),'None',BsmtExposure),
-                        BsmtFinType1=ifelse(is.na(BsmtFinType1),'None',BsmtFinType1),
-                        BsmtFinType2=ifelse(is.na(BsmtFinType2),'None',BsmtFinType2),
-                        FireplaceQu=ifelse(is.na(FireplaceQu),'None',FireplaceQu),
-                        GarageType=ifelse(is.na(GarageType),'None',GarageType),
-                        GarageYrBlt=ifelse(is.na(GarageYrBlt),'None',GarageYrBlt),
-                        GarageFinish=ifelse(is.na(GarageFinish),'None',GarageFinish),
-                        GarageQual=ifelse(is.na(GarageQual),'None',GarageQual),
-                        GarageCond=ifelse(is.na(GarageCond),'None',GarageCond),
-                        PoolQC=ifelse(is.na(PoolQC),'None',PoolQC),
-                        Fence=ifelse(is.na(Fence),'None',Fence),
-                        MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
+total %>%
+  ggplot(aes(MSZoning)) + geom_bar()
+total %>%
+  ggplot(aes(Utilities)) + geom_bar()
+total %>%
+  ggplot(aes(Exterior1st)) + geom_bar()
+total %>%
+  ggplot(aes(Exterior2nd)) + geom_bar()
+total %>%
+  ggplot(aes(Functional)) + geom_bar()
 
-tester <- tester %>% mutate(LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
-                            MSZoning=ifelse(is.na(MSZoning),'RL',MSZoning),
-                            BsmtUnfSF=ifelse(is.na(BsmtUnfSF),0,BsmtUnfSF),
-                            TotalBsmtSF=ifelse(is.na(TotalBsmtSF),0,TotalBsmtSF),
-                            BsmtFullBath=ifelse(is.na(BsmtFullBath),0,BsmtFullBath),
-                            BsmtHalfBath=ifelse(is.na(BsmtHalfBath),0,BsmtHalfBath),
-                            GarageArea=ifelse(is.na(GarageArea),0,GarageArea),
-                            SaleType=ifelse(is.na(SaleType),'Oth',SaleType),
-                            KitchenQual=ifelse(is.na(KitchenQual),'TA',KitchenQual),
-                        Alley=ifelse(is.na(Alley),'None',Alley),
-                        Electrical=ifelse(is.na(Electrical),'Unknown',Electrical),
-                        MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
-                        MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
-                        BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
-                        BsmtCond=ifelse(is.na(BsmtCond),'None',BsmtCond),
-                        BsmtExposure=ifelse(is.na(BsmtExposure),'None',BsmtExposure),
-                        BsmtFinType1=ifelse(is.na(BsmtFinType1),'None',BsmtFinType1),
-                        BsmtFinType2=ifelse(is.na(BsmtFinType2),'None',BsmtFinType2),
-                        FireplaceQu=ifelse(is.na(FireplaceQu),'None',FireplaceQu),
-                        GarageType=ifelse(is.na(GarageType),'None',GarageType),
-                        GarageYrBlt=ifelse(is.na(GarageYrBlt),'None',GarageYrBlt),
-                        GarageFinish=ifelse(is.na(GarageFinish),'None',GarageFinish),
-                        GarageQual=ifelse(is.na(GarageQual),'None',GarageQual),
-                        GarageCond=ifelse(is.na(GarageCond),'None',GarageCond),
-                        PoolQC=ifelse(is.na(PoolQC),'None',PoolQC),
-                        Fence=ifelse(is.na(Fence),'None',Fence),
-                        MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
+total <- total %>% mutate(MSZoning=ifelse(is.na(MSZoning),'RL',MSZoning),
+                          LotFrontage=ifelse(is.na(LotFrontage),0,LotFrontage),
+                          Alley=ifelse(is.na(Alley),'None',Alley),
+                          Utilities=ifelse(is.na(Utilities),'AllPub',Utilities),
+                          Exterior1st=ifelse(is.na(Exterior1st),'VinylSd',Exterior1st),
+                          Exterior2nd=ifelse(is.na(Exterior2nd),'VinylSd',Exterior2nd),
+                          MasVnrType=ifelse(is.na(MasVnrType),'None',MasVnrType),
+                          MasVnrArea=ifelse(is.na(MasVnrArea),0,MasVnrArea),
+                          BsmtQual=ifelse(is.na(BsmtQual),'None',BsmtQual),
+                          BsmtCond=ifelse(is.na(BsmtCond),'None',BsmtCond),
+                          BsmtExposure=ifelse(is.na(BsmtExposure),'None',BsmtExposure),
+                          BsmtFinType1=ifelse(is.na(BsmtFinType1),'None',BsmtFinType1),
+                          BsmtFinSF1=ifelse(is.na(BsmtFinSF1),0,BsmtFinSF1),
+                          BsmtFinType2=ifelse(is.na(BsmtFinType2),'None',BsmtFinType2),
+                          BsmtFinSF2=ifelse(is.na(BsmtFinSF2),0,BsmtFinSF2),
+                          BsmtUnfSF=ifelse(is.na(BsmtUnfSF),0,BsmtUnfSF),
+                          TotalBsmtSF=ifelse(is.na(TotalBsmtSF),0,TotalBsmtSF),
+                          Electrical=ifelse(is.na(Electrical),'Unknown',Electrical),
+                          BsmtFullBath=ifelse(is.na(BsmtFullBath),0,BsmtFullBath),
+                          BsmtHalfBath=ifelse(is.na(BsmtHalfBath),0,BsmtHalfBath),
+                          KitchenQual=ifelse(is.na(KitchenQual),'TA',KitchenQual),
+                          Functional=ifelse(is.na(Functional),'Typ',Functional),
+                          FireplaceQu=ifelse(is.na(FireplaceQu),'None',FireplaceQu),
+                          GarageType=ifelse(is.na(GarageType),'None',GarageType),
+                          GarageYrBlt=ifelse(is.na(GarageYrBlt),'None',GarageYrBlt),
+                          GarageFinish=ifelse(is.na(GarageFinish),'None',GarageFinish),
+                          GarageCars=ifelse(is.na(GarageCars),0,GarageCars),
+                          GarageArea=ifelse(is.na(GarageArea),0,GarageArea),
+                          SaleType=ifelse(is.na(SaleType),'Oth',SaleType),
+                          GarageQual=ifelse(is.na(GarageQual),'None',GarageQual),
+                          GarageCond=ifelse(is.na(GarageCond),'None',GarageCond),
+                          PoolQC=ifelse(is.na(PoolQC),'None',PoolQC),
+                          Fence=ifelse(is.na(Fence),'None',Fence),
+                          MiscFeature=ifelse(is.na(MiscFeature),'None',MiscFeature))
 
 #change character variables to factor
-main[sapply(main, is.character)] <- lapply(main[sapply(main, is.character)], 
+total[sapply(total, is.character)] <- lapply(total[sapply(total, is.character)], 
                                            as.factor)
+total %>%
+  ggplot(aes(GarageCars)) + geom_bar()
 
-tester[sapply(tester, is.character)] <- lapply(tester[sapply(tester, is.character)], 
-                                           as.factor)
-
-main$MSSubClass <- factor(main$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
-main$OverallCond <- factor(main$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
-main$OverallQual <- factor(main$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
-main$YrSold <- factor(main$YrSold, levels=c("2006","2007","2008","2009","2010"))
-main$MoSold <- factor(main$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
-
-tester$MSSubClass <- factor(tester$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
-tester$OverallCond <- factor(tester$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
-tester$OverallQual <- factor(tester$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
-tester$YrSold <- factor(tester$YrSold, levels=c("2006","2007","2008","2009","2010"))
-tester$MoSold <- factor(tester$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
+total$MSSubClass <- factor(total$MSSubClass, levels=c("20","30","40","45","50","60","70","75","80","85","90","120","150","160","180","190"))
+total$OverallCond <- factor(total$OverallCond, levels=c("1","2","3","4","5","6","7","8","9","10"))
+total$OverallQual <- factor(total$OverallQual, levels=c("1","2","3","4","5","6","7","8","9","10"))
+total$YrSold <- factor(total$YrSold, levels=c("2006","2007","2008","2009","2010"))
+total$MoSold <- factor(total$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
+total$GarageCars <- factor(total$GarageCars, levels = c("0","1","2","3","4","5"))
 
 #check for predictors with near zero variablity
-no_var <- nearZeroVar(main, saveMetrics = TRUE)
+no_var <- nearZeroVar(total, saveMetrics = TRUE)
 no_var
 
-main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
+main_m <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
                                  LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
                                  YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
                                  Foundation,BsmtQual,
@@ -129,9 +123,10 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
                                  BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice != 0)
 
-tester_m <- tester %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
+
+tester_m <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
                                  LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
                                  YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
                                  Foundation,BsmtQual,
@@ -140,7 +135,7 @@ tester_m <- tester %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotA
                                  BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition)
+                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice == 0)
 
 colnames(main_m)[39] <- "L1stFlrSF"
 colnames(main_m)[40] <- "L2ndFlrSF"
@@ -202,7 +197,7 @@ tester_red <- tester_m %>% mutate(SF1st2nd=L2ndFlrSF+L1stFlrSF,
                 Heating,CentralAir,BsmtBaths,GrBaths,KitchenAbvGr,KitchenQual,
                 Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,OutPorch,
                 IndPorch,PoolArea,
-                MiscVal,MoSold,YrSold,SaleType,SaleCondition)
+                MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
 
 ## 2.3. Checking predictors effect
 main_m %>%
@@ -381,12 +376,12 @@ plot(lm_imp_redopt, top = 15, main="Variable Importance Linear Regression Red Op
 ### REEESULTS
 set.seed(1, sample.kind = "Rounding")
 model_lm_redopt <- caret::train(SalePrice ~ ., data=main_red, method="lm",
-                                trControl=trainControl(method = "repeatedcv", number=5, repeats=3))
-tester_red <- tester_red %>% add_column(SalePrice = NA)
+                                trControl=trainControl(method = "cv", number=5))
+
 results_lm_redopt <- predict(model_lm_redopt, tester_red)
-cbind(tester_red, Predicted=results_lm_redopt)
-capture.output(results_lm_redopt, file="resultss.csv")
-write_csv(results_lm_redopt, "results_set.csv")
+output <- cbind(tester_red, SalePrice_pred=round(results_lm_redopt, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
+
+write_csv(output, "output.csv")
 rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED OPT", 
                                                    RMSE_Train = max(train_lm_redopt$results$RMSE), 
                                                    RMSE_Test = rmse_lm_redopt,

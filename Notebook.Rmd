@@ -162,12 +162,12 @@ main_m <- main %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea,
                                  LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
                                  YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
                                  Foundation,BsmtQual,
-                                 BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtFinType2,BsmtFinSF2,BsmtUnfSF,TotalBsmtSF,
-                                 Heating,HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",LowQualFinSF,GrLivArea,BsmtFullBath,
+                                 BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                 Heating,HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",GrLivArea,BsmtFullBath,
                                  BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
                                  GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 PoolQC,Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
 ```
 
 Now, from a start of 79 features, we continue with 71. 71 variables is still quite a lot.
