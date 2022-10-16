@@ -316,18 +316,109 @@ train.afchisq %>%
   ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_dotplot(binwidth=10000, binaxis="y", stackdir="center", aes(color=MSZoning)) +
   ggtitle("Neighborhood") + xlab("Neighborhood") #we can disregard MSZoning feature as is correlated to Neighborhood feature
 
-train.afchisq %>% 
-  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_boxplot() +
-  ggtitle("Neighborhood") + xlab("Neighborhood")
+train.red <- train.afchisq %>% dplyr::select(-MSZoning)
+test.red <- test.afchisq %>% dplyr::select(-MSZoning)
 
+#LotShape and LotConfig
 
-main_m %>% 
-  ggplot(aes(fct_infreq(Heating), SalePrice)) + geom_boxplot() +
-  ggtitle("Heating") + xlab("Heating")
+train.red %>% 
+  ggplot(aes(fct_infreq(LotShape), SalePrice)) + geom_violin(aes(color=LotConfig)) +
+  ggtitle("LotShape") + xlab("LotShape") 
 
-main_m %>% 
-  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_boxplot() +
-  ggtitle("Neighborhood") + xlab("Neighborhood")
+train.red %>% 
+  ggplot(aes(fct_infreq(LotConfig), SalePrice)) + geom_boxplot() +
+  ggtitle("LotConfig") + xlab("LotConfig")
+
+train.red %>% 
+  ggplot(aes(fct_infreq(LotShape), SalePrice)) + geom_boxplot() +
+  ggtitle("LotShape") + xlab("LotShape")
+
+#Overall Quality and OverallCond
+train.red %>% 
+  ggplot(aes(OverallQual, SalePrice)) + geom_boxplot(aes(color=OverallCond)) +
+  ggtitle("OverallQual") + xlab("OverallQual") 
+
+train.red %>% 
+  ggplot(aes(OverallCond, SalePrice)) + geom_boxplot() +
+  ggtitle("OverallCond") + xlab("OverallCond") #has outliers
+
+#MasVnrType and MasVnrArea
+train.red %>% 
+  ggplot(aes(MasVnrArea, SalePrice)) + geom_jitter(aes(color=MasVnrType)) +
+  ggtitle("MasVnrArea") + xlab("MasVnrArea") #both affect output
+
+#ExterQual and ExterCond
+train.red %>% 
+  ggplot(aes(ExterQual, SalePrice)) + geom_jitter(aes(color=ExterCond)) +
+  ggtitle("ExterQual") + xlab("ExterQual")
+
+train.red %>%
+  ggplot(aes(ExterCond, SalePrice)) + geom_boxplot() +
+  ggtitle("ExterCond") + xlab("ExterCond")
+table(train.red$ExterCond) %>% sort(decreasing = TRUE) #drop ExterCond as most data is TA and is related to ExterQual
+table(train.red$ExterQual) %>% sort(decreasing = TRUE)
+
+train.red <- train.red %>% dplyr::select(-ExterCond)
+test.red <- test.red %>% dplyr::select(-ExterCond)
+
+#Foundation
+train.red %>%
+  ggplot(aes(Foundation, SalePrice)) + geom_boxplot() +
+  ggtitle("Foundation") + xlab("Foundation")
+table(train.red$Foundation) %>% sort(decreasing = TRUE)
+
+total.red <- rbind(train.red,test.red)
+
+total.red <- total.red %>% mutate (Foundation = as.factor(case_when(
+  Foundation=="PConc" ~ "PConc",
+  TRUE ~ "Other"
+)))
+
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
+train.red %>%
+  ggplot(aes(Foundation, SalePrice)) + geom_boxplot() +
+  ggtitle("Foundation") + xlab("Foundation")
+
+#BsmtQual and BsmtExposure
+train.red %>% 
+  ggplot(aes(BsmtQual, SalePrice)) + geom_jitter(aes(color=BsmtExposure)) +
+  ggtitle("BsmtQual") + xlab("BsmtQual") #no relationship between BsmtExposure and SalePrice so we can drop it
+
+train.red <- train.red %>% dplyr::select(-BsmtExposure)
+test.red <- test.red %>% dplyr::select(-BsmtExposure)
+
+#BsmtFinType1 and BsmtFinSF1
+train.red %>% 
+  ggplot(aes(BsmtFinSF1, SalePrice)) + geom_jitter(aes(color=BsmtFinType1)) +
+  ggtitle("BsmtFinSF1") + xlab("BsmtFinSF1") 
+
+train.red %>% #simplify options
+  ggplot(aes(BsmtFinType1, SalePrice)) + geom_boxplot() +
+  ggtitle("BsmtFinType1") + xlab("BsmtFinType1")
+
+total.red <- rbind(train.red,test.red)
+
+total.red <- total.red %>% mutate (BsmtFinType1 = as.character(BsmtFinType1))
+
+total.red <- total.red %>% mutate (BsmtFinType1m = as.factor(case_when(
+  BsmtFinSF1==0 ~ "None", 
+  TRUE ~ BsmtFinType1)))
+
+total.red <- total.red %>% mutate (BsmtFinType1m = as.factor(case_when(
+  BsmtFinType1m=="GLQ" ~ "GLQ",
+  BsmtFinType1m=="None" ~ "None",
+  TRUE ~ "Other"
+)))
+train.red <- total.red %>% dplyr::select(-BsmtFinType1) %>% filter(SalePrice != 0)
+test.red <- total.red %>% dplyr::select(-BsmtFinType1) %>% filter(SalePrice == 0)
+
+train.red %>% 
+  ggplot(aes(BsmtFinSF1, SalePrice)) + geom_jitter(aes(color=BsmtFinType1m)) +
+  ggtitle("BsmtFinSF1") + xlab("BsmtFinSF1")
+
+#CentralAir
+
 
 #categorical independent
 main_m %>% 
