@@ -267,7 +267,7 @@ fviz_pca_var(train.pca, col.var = "black")
 
 train.pca.data <- data.frame(SalePrice=train.afchisq$SalePrice, train.pca$x)
 train.pca.data <- train.pca.data[,1:12]
-train.pca.data <- data.frame(MSSubClass=train.afchisq$MSSubClass, MSZoning=train.afchisq$MSZoning, LotShape=train.afchisq$LotShape,
+train.pca.data.total <- data.frame(MSSubClass=train.afchisq$MSSubClass, MSZoning=train.afchisq$MSZoning, LotShape=train.afchisq$LotShape,
                              LotConfig=train.afchisq$LotConfig, Neighborhood=train.afchisq$Neighborhood, OverallQual=train.afchisq$OverallQual,
                              OverallCond=train.afchisq$OverallCond, MasVnrType=train.afchisq$MasVnrType, ExterQual=train.afchisq$ExterQual,
                              ExterCond=train.afchisq$ExterCond, Foundation=train.afchisq$Foundation, BsmtQual=train.afchisq$BsmtQual,
@@ -589,17 +589,34 @@ train.red %>%
 # 3. RESULTS
 
 ## 3.1. LR
+train.mut2 <- train.mut %>%
+   dplyr::select(Id, YearBuilt, YearRemodAdd, SF1st2nd, GrLivArea, TotRmsAbvGrd, LotArea, OverallQual, SalePrice)
+test.mut2 <- test.mut %>%
+  dplyr::select(Id, YearBuilt, YearRemodAdd, SF1st2nd, GrLivArea, TotRmsAbvGrd, LotArea, OverallQual, SalePrice)
+
+set.seed(1, sample.kind = "Rounding")
+test_index.mut <- createDataPartition(train.mut2$SalePrice, times=1, p=0.15, list=FALSE)
+train_set.mut <- train.mut2[-test_index.mut,] %>% dplyr::select(-Id)
+test_set.mut <- train.mut2[test_index.mut,] %>% dplyr::select(-Id) 
+
+set.seed(1, sample.kind = "Rounding")
+train_lm.mut <- caret::train(SalePrice ~ ., data=train_set.mut, method="lm",
+                             trControl=trainControl(method = "cv", number=3))
+y_lm.mut <- predict(train_lm.mut, test_set.mut)
+rmse_lm.mut <- RMSE(y_lm.mut, test_set.mut$SalePrice)
+
 ### 3.1.1. LR on train.red, CV
 
 #data partition
 set.seed(1, sample.kind = "Rounding")
 test_index.red <- createDataPartition(train.red$SalePrice, times=1, p=0.15, list=FALSE)
 train_set.red <- train.red[-test_index.red,] %>% dplyr::select(-Id)
-test_set.red <- train.red[test_index.red,] %>% dplyr::select(-Id) 
+test_set.red <- train.red[test_index.red,] %>% dplyr::select(-Id)
 
+#lm
 tic("Logistic Regression CV5")
 set.seed(1, sample.kind = "Rounding")
-train_lm.red <- caret::train(SalePrice ~ ., data=train_set.red, method="lm",
+train_lm.red <- caret::train(SalePrice ~ ., data=train_set.red, method="lm", preProc=c('center', 'scale'),
                          trControl=trainControl(method = "cv", number=5))
 lm_toc <- toc()
 
@@ -614,6 +631,87 @@ rmse_results <- tibble(method = "LR CV5",
 lm_imp.red <- varImp(train_lm.red)
 plot(lm_imp.red, top = 10, main="Variable Importance Linear Regression")
 
+#glm
+tic("Generalized Logistic Regression CV5")
+set.seed(1, sample.kind = "Rounding")
+train_glm.red <- caret::train(SalePrice ~ ., data=train_set.red, method="glm", preProc=c('center', 'scale'),
+                             trControl=trainControl(method = "cv", number=5))
+glm_toc <- toc()
+y_glm.red <- predict(train_glm.red, test_set.red)
+rmse_glm.red <- RMSE(y_glm.red, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "GLM", 
+                                                   RMSE_Train = min(train_glm.red$results$RMSE), 
+                                                   RMSE_Test = rmse_glm.red,
+                                                   Time = glm_toc$toc - glm_toc$tic))
+
+#glmnet
+tic("GLMNET")
+set.seed(1, sample.kind = "Rounding")
+train_glmnet.red <- caret::train(SalePrice ~ ., data=train_set.red, method="glmnet", preProc=c('center', 'scale'),
+                              trControl=trainControl(method = "cv", number=5))
+glmnet_toc <- toc()
+y_glmnet.red <- predict(train_glmnet.red, test_set.red)
+rmse_glmnet.red <- RMSE(y_glmnet.red, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "GLMNET",
+                                                   RMSE_Train = min(train_glmnet.red$results$RMSE),
+                                                   RMSE_Test=rmse_glmnet.red,
+                                                   Time = glmnet_toc$toc - glmnet_toc$tic))
+
+#SVR
+tic("SVR")
+set.seed(1, sample.kind = "Rounding")
+tuneGrid <- expand.grid(
+  C = c(0.25, .5, 1),
+  sigma = 0.1
+)
+train_svm <- caret::train(SalePrice ~ ., data=train_set.red, method="svmRadial", preProcess = c("center", "scale", "BoxCox"), trControl=trainControl(method = "cv", number=5),tuneGrid = tuneGrid)
+svm_toc <- toc()
+plot(train_svm)
+y_svm <- predict(train_svm, test_set.red)
+rmse_svm <- RMSE(y_svm, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "SVM", 
+                                                   RMSE_Train = min(train_svm$results$RMSE), 
+                                                   RMSE_Test = rmse_svm,
+                                                   Time = svm_toc$toc - svm_toc$tic))
+
+#random forest
+tic("Random Forest")
+set.seed(1, sample.kind = "Rounding")
+train_rf <- caret::train(SalePrice ~ ., data=train_set.red, method="ranger", trControl=trainControl(method = "cv", number=5))
+rf_toc <- toc()
+
+y_rf <- predict(train_rf, test_set.red)
+rmse_rf <- RMSE(y_rf, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "RF", 
+                                                   RMSE_Train = min(train_rf$results$RMSE), 
+                                                   RMSE_Test = rmse_rf,
+                                                   Time = rf_toc$toc - rf_toc$tic))
+
+#gbm
+tic("GBM")
+set.seed(1, sample.kind = "Rounding")
+train_gbm <- caret::train(SalePrice ~ ., data=train_set.red, method="gbm", trControl=trainControl(method = "cv", number=5))
+gbm_toc <- toc()
+
+y_gbm <- predict(train_gbm, test_set.red)
+rmse_gbm <- RMSE(y_gbm, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "GBM", 
+                                                   RMSE_Train = min(train_gbm$results$RMSE), 
+                                                   RMSE_Test = rmse_gbm,
+                                                   Time = gbm_toc$toc - gbm_toc$tic))
+
+#xgboost
+tic("XGBoost")
+set.seed(1, sample.kind = "Rounding")
+train_xgb <- caret::train(SalePrice ~ ., data=train_set.red, method="xgbTree", trControl=trainControl(method = "cv", number=5))
+xgb_toc <- toc()
+
+y_xgb <- predict(train_xgb, test_set.red)
+rmse_xgb <- RMSE(y_xgb, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "XGB", 
+                                                   RMSE_Train = min(train_xgb$results$RMSE), 
+                                                   RMSE_Test = rmse_xgb,
+                                                   Time = xgb_toc$toc - xgb_toc$tic))
 
 ### 3.1.2. LR on train.red, Repeated Cross Validation
 tic("Logistic Regression RCV")
@@ -652,7 +750,7 @@ rmse_results <- bind_rows(rmse_results,
                                     RMSE_Test = rmse_rpart,
                                     Time = rp_toc$toc-rp_toc$tic))
 
-### 3.2.2. 
+### 3.2.2. Decision Tree optimized
 tic()
 set.seed(2007, sample.kind = "Rounding")
 control1 <- trainControl(method = "cv", number=4, classProbs = TRUE)
@@ -718,15 +816,11 @@ set.seed(1, sample.kind = "Rounding")
 train_lasso <- caret::train(SalePrice ~ ., data=train_set.red, method="lasso")
 lasso_toc <- toc()
 
+## 3.4. Gradient Boosting
+
 ### REEESULTS
 set.seed(1, sample.kind = "Rounding")
-
-
-results_lm <- predict(train_lm.red, test.red)
-output <- cbind(test.red, SalePrice_pred=round(results_lm, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
+results <- predict(train_xgb, test.red)
+output <- cbind(test.red, SalePrice_pred=round(results, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
 
 write_csv(output, "output.csv")
-rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED OPT", 
-                                                   RMSE_Train = max(train_lm_redopt$results$RMSE), 
-                                                   RMSE_Test = rmse_lm_redopt,
-                                                   Time = lm_toc_redopt$toc - lm_toc_redopt$tic))
