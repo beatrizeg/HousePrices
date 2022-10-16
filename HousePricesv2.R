@@ -398,9 +398,7 @@ train.red %>% #simplify options
   ggtitle("BsmtFinType1") + xlab("BsmtFinType1")
 
 total.red <- rbind(train.red,test.red)
-
 total.red <- total.red %>% mutate (BsmtFinType1 = as.character(BsmtFinType1))
-
 total.red <- total.red %>% mutate (BsmtFinType1m = as.factor(case_when(
   BsmtFinSF1==0 ~ "None", 
   TRUE ~ BsmtFinType1)))
@@ -418,189 +416,314 @@ train.red %>%
   ggtitle("BsmtFinSF1") + xlab("BsmtFinSF1")
 
 #CentralAir
+train.red %>%
+  ggplot(aes(CentralAir, SalePrice)) + geom_boxplot() +
+  ggtitle("CentralAir") + xlab("CentralAir")
 
+#KitchenAbvGr and KitchenQual
+train.red %>% 
+  ggplot(aes(KitchenAbvGr, SalePrice)) + geom_jitter(aes(color=KitchenQual)) +
+  ggtitle("KitchenAbvGr") + xlab("KitchenAbvGr") 
 
-#categorical independent
-main_m %>% 
-  ggplot(aes(fct_infreq(GarageYrBlt), SalePrice)) + geom_boxplot() +
-  ggtitle("GarageYrBlt") + xlab("GarageYrBlt")
+#there is no relation between KitchenAbvGr and SalePrice so dropping it
+train.red <- train.red %>% dplyr::select(-KitchenAbvGr)
+test.red <- test.red %>% dplyr::select(-KitchenAbvGr)
 
-main_m %>% 
-  ggplot(aes(fct_infreq(BldgType), SalePrice)) + geom_boxplot() +
-  ggtitle("BldgType") + xlab("BldgType")
+#Fireplaces and FireplaceQu
+train.red %>% 
+  ggplot(aes(Fireplaces, SalePrice)) + geom_jitter(aes(color=FireplaceQu)) +
+  ggtitle("Fireplaces") + xlab("Fireplaces")
+train.red %>%
+  ggplot(aes(FireplaceQu, SalePrice)) + geom_violin() +
+  ggtitle("FireplaceQu") + xlab("FireplaceQu")
 
-main_m %>% 
-  ggplot(aes(fct_infreq(MiscFeature), SalePrice)) + geom_boxplot() +
-  ggtitle("MiscFeature") + xlab("MiscFeature")
+total.red <- rbind(train.red,test.red)
+total.red <- total.red %>% mutate (FireplaceQu = as.factor(case_when(
+  FireplaceQu=="Ex" ~ "Ex",
+  FireplaceQu=="Gd" | FireplaceQu=="TA" ~ "TA",
+  FireplaceQu=="Fa" | FireplaceQu=="Po" ~ "Po",
+  TRUE ~ "None")))
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
 
-main_m %>% 
-  ggplot(aes(fct_infreq(OverallCond), SalePrice)) + geom_boxplot() +
-  ggtitle("OverallCond") + xlab("OverallCond")
+train.red %>% 
+  ggplot(aes(Fireplaces, SalePrice)) + geom_jitter(aes(color=FireplaceQu)) +
+  ggtitle("Fireplaces") + xlab("Fireplaces")
 
-main_m %>% 
+#GarageType
+train.red %>%
+  ggplot(aes(GarageType, SalePrice)) + geom_violin() +
+  ggtitle("GarageType") + xlab("GarageType") #dropping GarageType
+
+train.red <- train.red %>% dplyr::select(-GarageType)
+test.red <- test.red %>% dplyr::select(-GarageType)
+
+#GarageFinish and GarageQual
+train.red %>% 
+  ggplot(aes(GarageFinish, SalePrice)) + geom_jitter(aes(color=GarageQual)) +
+  ggtitle("GarageFinish") + xlab("GarageFinish") #droppling GarageQual
+
+train.red <- train.red %>% dplyr::select(-GarageQual)
+test.red <- test.red %>% dplyr::select(-GarageQual)
+
+#GarageArea and GarageFinish
+train.red %>% 
+  ggplot(aes(GarageArea, SalePrice)) + geom_jitter(aes(color=GarageFinish)) +
+  ggtitle("GarageArea") + xlab("GarageArea")
+
+train.red %>%
+  ggplot(aes(GarageFinish, SalePrice)) + geom_boxplot()
+
+train.red %>% 
+  ggplot(aes(GarageYrBlt, SalePrice)) + geom_jitter(aes(color=GarageFinish)) +
+  ggtitle("GarageYrBlt") + xlab("GarageYrBlt") #droppling GarageYrBuilt
+
+train.red <- train.red %>% dplyr::select(-GarageYrBlt)
+test.red <- test.red %>% dplyr::select(-GarageYrBlt)
+
+#MoSold and YrSold
+train.red %>%
+  ggplot(aes(MoSold, SalePrice)) + geom_boxplot() #dropping MoSold
+train.red <- train.red %>% dplyr::select(-MoSold)
+test.red <- test.red %>% dplyr::select(-MoSold)
+
+train.red %>%
+  ggplot(aes(YrSold, SalePrice)) + geom_violin()  #dropping YrSold
+train.red <- train.red %>% dplyr::select(-YrSold)
+test.red <- test.red %>% dplyr::select(-YrSold)
+
+#SaleType and SaleCondition
+train.red %>% 
   ggplot(aes(SaleType, SalePrice)) + geom_jitter(aes(color=SaleCondition)) +
   ggtitle("SaleType") + xlab("SaleType")
 
-main_m %>% 
-  ggplot(aes(LotShape, SalePrice)) + geom_jitter(aes(color=LotConfig)) +
-  ggtitle("LotShape") + xlab("LotShape")
+total.red <- rbind(train.red,test.red)
+total.red <- total.red %>% mutate (SaleType = as.factor(case_when(
+  SaleType=="New" ~ "New",
+  SaleType=="WD" ~ "WD",
+  TRUE ~ "Other")))
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
+
+train.red %>% 
+  ggplot(aes(SaleCondition, SalePrice)) + geom_jitter(aes(color=SaleType)) +
+  ggtitle("SaleCondition") + xlab("SaleCondition") #dropping SaleCondition
+
+train.red <- train.red %>% dplyr::select(-SaleCondition)
+test.red <- test.red %>% dplyr::select(-SaleCondition)
 
 #numerical
-main_m %>% 
+
+#LotFrontage and LotArea
+train.red %>% 
+  ggplot(aes(LotFrontage, SalePrice)) + geom_smooth() +
+  ggtitle("LotFrontage") + xlab("LotFrontage") #dropping LotFrontage
+train.red %>% 
+  ggplot(aes(LotArea, SalePrice)) + geom_smooth() +
+  ggtitle("LotArea") + xlab("LotArea")
+train.red <- train.red %>% dplyr::select(-LotFrontage)
+test.red <- test.red %>% dplyr::select(-LotFrontage)
+
+#YearBuilt and YearRemodAdd
+train.red %>% 
+  ggplot(aes(YearBuilt, SalePrice)) + geom_smooth() +
+  ggtitle("YearBuilt") + xlab("YearBuilt")
+
+train.red %>% 
+  ggplot(aes(YearRemodAdd, SalePrice)) + geom_smooth() +
+  ggtitle("YearRemodAdd") + xlab("YearRemodAdd")
+
+total.red <- rbind(train.red,test.red)
+total.red <- total.red %>% mutate (MaxBuiltYr = pmax(YearBuilt, YearRemodAdd))
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
+train.red %>% 
+  ggplot(aes(MaxBuiltYr, SalePrice)) + geom_smooth() +
+  ggtitle("MaxBuiltYr") + xlab("MaxBuiltYr")
+
+train.red <- train.red %>% dplyr::select(-YearRemodAdd,-YearBuilt)
+test.red <- test.red %>% dplyr::select(-YearRemodAdd,-YearBuilt)
+
+#BsmtUnfSF and TotalBsmtSF
+train.red %>% 
+  ggplot(aes(BsmtUnfSF, SalePrice)) + geom_jitter(aes(color=TotalBsmtSF)) +
+  ggtitle("BsmtUnfSF") + xlab("BsmtUnfSF") #dropping BsmtUnfSF
+train.red <- train.red %>% dplyr::select(-BsmtUnfSF)
+test.red <- test.red %>% dplyr::select(-BsmtUnfSF)
+
+#GrLivArea
+train.red %>% 
   ggplot(aes(GrLivArea, SalePrice)) + geom_smooth() +
   ggtitle("GrLivArea") + xlab("GrLivArea")
 
-main_m %>% 
-  ggplot(aes(GarageCars, SalePrice)) + geom_jitter(aes(color=BldgType)) +
-  ggtitle("GarageCars") + xlab("GarageCars")
+#GrBaths
+total.red <- rbind(train.red,test.red)
+total.red$GrBaths <- as.factor(total.red$GrBaths)
+total.red <- total.red %>% mutate (GrBaths = as.factor(case_when(
+  GrBaths=="0" | GrBaths=="0.5" ~ "<1",
+  GrBaths=="1" | GrBaths=="1.5" ~ "1",
+  GrBaths=="2" | GrBaths=="2.5" | GrBaths=="2" ~ "2-3",
+  TRUE ~ ">3")))
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
 
-main_m %>% 
-  ggplot(aes(TotalBsmtSF, SalePrice)) + geom_jitter(aes(color=BsmtCond)) +
-  ggtitle("TotalBsmtSF") + xlab("TotalBsmtSF")
+train.red %>%
+  ggplot(aes(GrBaths, SalePrice)) + geom_boxplot()
 
-main_m %>% 
-  ggplot(aes(YrSold, SalePrice)) + geom_jitter(aes(color=YearBuilt)) +
-  ggtitle("YrSold") + xlab("YrSold")
+#TotRmsAbvGrd
+train.red %>% 
+  ggplot(aes(TotRmsAbvGrd, SalePrice)) + geom_smooth() +
+  ggtitle("TotRmsAbvGrd") + xlab("TotRmsAbvGrd")
 
-##2.4. Create Data Partition
-
-set.seed(1, sample.kind = "Rounding")
-test_index <- createDataPartition(main_m$SalePrice, times=1, p=0.15, list=FALSE)
-train_set <- main_m[-test_index,] %>% dplyr::select(-Id)
-test_set <- main_m[test_index,] %>% dplyr::select(-Id) 
-
-set.seed(1, sample.kind = "Rounding")
-test_index_red <- createDataPartition(main_red$SalePrice, times=1, p=0.15, list=FALSE)
-train_set_red <- main_red[-test_index_red,] %>% dplyr::select(-Id)
-test_set_red <- main_red[test_index_red,] %>% dplyr::select(-Id)
-
-set.seed(1, sample.kind = "Rounding")
-test.pca.index <- createDataPartition(main.pca.data$SalePrice, times=1, p=0.15, list=FALSE)
-train.pca <- main.pca.data[-test.pca.index,]
-test.pca <- main.pca.data[test.pca.index,]
-
-##2.5. Method
-
+#Porch
+total.red <- rbind(train.red,test.red)
+total.red <- total.red %>% mutate (Porch = OutPorch + IndPorch)
+train.red <- total.red %>% filter(SalePrice != 0)
+test.red <- total.red %>% filter(SalePrice == 0)
+train.red <- train.red %>% dplyr::select(-OutPorch,-IndPorch)
+test.red <- test.red %>% dplyr::select(-OutPorch,-IndPorch)
+train.red %>% 
+  ggplot(aes(Porch, SalePrice)) + geom_smooth() +
+  ggtitle("Porch") + xlab("Porch")
+                                     
 # 3. RESULTS
 
-## 3.1. LM
-### 3.1.1. LM without eliminating correlated variables
-tic("Logistic Regression")
-set.seed(1, sample.kind = "Rounding")
-train_lm <- caret::train(SalePrice ~ ., data=train_set, method="lm",
-                         trControl=trainControl(method = "cv", number=5))
+## 3.1. LR
+### 3.1.1. LR on train.red, CV
 
+#data partition
+set.seed(1, sample.kind = "Rounding")
+test_index.red <- createDataPartition(train.red$SalePrice, times=1, p=0.15, list=FALSE)
+train_set.red <- train.red[-test_index.red,] %>% dplyr::select(-Id)
+test_set.red <- train.red[test_index.red,] %>% dplyr::select(-Id) 
+
+tic("Logistic Regression CV5")
+set.seed(1, sample.kind = "Rounding")
+train_lm.red <- caret::train(SalePrice ~ ., data=train_set.red, method="lm",
+                         trControl=trainControl(method = "cv", number=5))
 lm_toc <- toc()
 
 
-y_lm <- predict(train_lm, test_set)
-rmse_lm <- RMSE(y_lm, test_set$SalePrice)
-rmse_results <- tibble(method = "LM", 
-                      RMSE_Train = max(train_lm$results$RMSE), 
-                      RMSE_Test = rmse_lm,
+y_lm.red <- predict(train_lm.red, test_set.red)
+rmse_lm.red <- RMSE(y_lm.red, test_set.red$SalePrice)
+rmse_results <- tibble(method = "LR CV5", 
+                      RMSE_Train = min(train_lm.red$results$RMSE), 
+                      RMSE_Test = rmse_lm.red,
                       Time = lm_toc$toc - lm_toc$tic)
 
-lm_imp <- varImp(train_lm)
-plot(lm_imp, top = 10, main="Variable Importance Linear Regression")
+lm_imp.red <- varImp(train_lm.red)
+plot(lm_imp.red, top = 10, main="Variable Importance Linear Regression")
 
-### 3.1.2. LM with reduced table eliminating correlated variables
-tic("Logistic Regression Reduced")
+
+### 3.1.2. LR on train.red, Repeated Cross Validation
+tic("Logistic Regression RCV")
 set.seed(1, sample.kind = "Rounding")
-train_lm_red <- caret::train(SalePrice ~ ., data=train_set_red, method="lm",
-                         trControl=trainControl(method = "cv", number=5))
-
-lm_toc_red <- toc()
-
-
-y_lm_red <- predict(train_lm_red, test_set_red)
-rmse_lm_red <- RMSE(y_lm_red, test_set_red$SalePrice)
-rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED", 
-                       RMSE_Train = max(train_lm_red$results$RMSE), 
-                       RMSE_Test = rmse_lm_red,
-                       Time = lm_toc_red$toc - lm_toc_red$tic))
-
-lm_imp_red <- varImp(train_lm_red)
-ImpMeasure <- data.frame(varImp(train_lm_red)$importance)
-capture.output(ImpMeasure, file="LM_IMP_RED.csv")
-plot(lm_imp_red, top = 15, main="Variable Importance Linear Regression Red")
-
-#3.1.3. removing variables without importance
-main_red2 <- main_red %>%
-                dplyr::select(Id, MSSubClass, MSZoning, LotArea, LotShape, LandContour, LotConfig,
-                LandSlope,Neighborhood,OverallQual, OverallCond,YearBuilt,
-                YearRemodAdd,MasVnrArea,ExterQual,ExterCond,BsmtQual,BsmtCond,
-                Foundation,BsmtExposure,BsmtFinType1,GrLivArea,BsmtUnfSF,TotalBsmtSF,
-                Heating,CentralAir,BsmtBaths,GrBaths,KitchenAbvGr,KitchenQual,
-                Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,OutPorch,
-                IndPorch,PoolArea,
-                MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
-
-set.seed(1, sample.kind = "Rounding")
-test_index_red2 <- createDataPartition(main_red2$SalePrice, times=1, p=0.15, list=FALSE)
-train_set_red2 <- main_red2[-test_index_red2,] %>% dplyr::select(-Id)
-test_set_red2 <- main_red2[test_index_red2,] %>% dplyr::select(-Id)
-
-tic("Logistic Regression Reduced2")
-set.seed(1, sample.kind = "Rounding")
-train_lm_red2 <- caret::train(SalePrice ~ ., data=train_set_red2, method="lm",
-                             trControl=trainControl(method = "repeatedcv", number=3, repeats=3))
-
-lm_toc_red2 <- toc()
-
-
-y_lm_red2 <- predict(train_lm_red2, test_set_red2)
-rmse_lm_red2 <- RMSE(y_lm_red2, test_set_red2$SalePrice)
-rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED2", 
-                                                   RMSE_Train = max(train_lm_red2$results$RMSE), 
-                                                   RMSE_Test = rmse_lm_red2,
-                                                   Time = lm_toc_red2$toc - lm_toc_red2$tic))
-
-lm_imp_red2 <- varImp(train_lm_red2)
-plot(lm_imp_red2, top = 10, main="Variable Importance Linear Regression Red2")
-
-### 3.1.4. LM Repeated Cross Validation
-tic("Logistic Regression Reduced")
-set.seed(1, sample.kind = "Rounding")
-train_lm_redopt <- caret::train(SalePrice ~ ., data=train_set_red, method="lm",
+train_lm.red.rcv <- caret::train(SalePrice ~ ., data=train_set.red, method="lm",
                              trControl=trainControl(method = "repeatedcv", number=5, repeats=3))
 
-lm_toc_redopt <- toc()
+lm_toc_red.rcv <- toc()
 
-y_lm_redopt <- predict(train_lm_redopt, test_set_red)
-rmse_lm_redopt <- RMSE(y_lm_redopt, test_set_red$SalePrice)
-rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED OPT", 
-                                                   RMSE_Train = max(train_lm_redopt$results$RMSE), 
-                                                   RMSE_Test = rmse_lm_redopt,
-                                                   Time = lm_toc_redopt$toc - lm_toc_redopt$tic))
-
-lm_imp_redopt <- varImp(train_lm_redopt)
-ImpMeasureopt <- data.frame(varImp(train_lm_redopt)$importance)
-capture.output(ImpMeasureopt, file="LM_IMP_REDOPT.csv")
-plot(lm_imp_redopt, top = 15, main="Variable Importance Linear Regression Red Opt")
+y_lm.red.rcv <- predict(train_lm.red.rcv, test_set.red)
+rmse_lm.red.rcv <- RMSE(y_lm.red.rcv, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "LR RCV", 
+                                                   RMSE_Train = min(train_lm.red.rcv$results$RMSE), 
+                                                   RMSE_Test = rmse_lm.red.rcv,
+                                                   Time = lm_toc_red.rcv$toc - lm_toc_red.rcv$tic))
 
 
-###LM after PCA
-tic("Logistic Regression PCA")
+#3.2.Decision Tree
+#3.2.1. Decision Tree not optimized
+tic()
+set.seed(2007, sample.kind = "Rounding")
+control <- trainControl(method = "cv", number=4, classProbs = TRUE)
+train_rpart <- train(SalePrice ~ ., data=train_set.red, method="rpart", trControl=control)
+rp_toc <- toc()
+ggplot(train_rpart, highlight = TRUE)
+
+fancyRpartPlot(train_rpart$finalModel, sub = NULL)
+rpart_imp <- varImp(train_rpart)
+plot(rpart_imp, top = 10, main="Var Imp default Classification Tree")
+
+y_rpart <- predict(train_rpart, test_set.red, type="raw")
+rmse_rpart <- RMSE(y_rpart, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results,
+                         data_frame(method="Classification Trees not optimised", 
+                                    RMSE_Train = min(train_rpart$results$RMSE),
+                                    RMSE_Test = rmse_rpart,
+                                    Time = rp_toc$toc-rp_toc$tic))
+
+### 3.2.2. 
+tic()
+set.seed(2007, sample.kind = "Rounding")
+control1 <- trainControl(method = "cv", number=4, classProbs = TRUE)
+train_rpart1 <- train(SalePrice ~ ., data=train_set.red, method="rpart", 
+                      tuneGrid = data.frame(cp = seq(0, 0.07, len = 25)),
+                      control=rpart::rpart.control(minsplit=15), trControl=control1)
+rp1_toc <- toc()
+ggplot(train_rpart1, highlight = TRUE)
+
+cp <- train_rpart1$bestTune$cp
+minsplit <- seq(15, 80, len=15)
+rmse <- sapply(minsplit, function(ms){
+  set.seed(2007, sample.kind = "Rounding")
+  control1 <- trainControl(method = "cv", number=4, classProbs = TRUE)
+  train(SalePrice ~ ., method = "rpart", data = train_set.red, tuneGrid = data.frame(cp=cp),
+        control=rpart::rpart.control(minsplit=ms), trControl=control1)$results$RMSE})
+
+qplot(minsplit, rmse)
+minsplit[which.min(rmse)]
+min(rmse)
+minsplit <- minsplit[which.min(rmse)]
+
+tic("rpart")
+set.seed(2007, sample.kind = "Rounding")
+control1 <- trainControl(method = "cv", number=4, classProbs = TRUE)
+train_rpart2 <- train(SalePrice ~ ., data=train_set.red, method="rpart", 
+                      tuneGrid = data.frame(cp = cp), 
+                      control=rpart::rpart.control(minsplit=minsplit), 
+                      trControl=control1)
+rp2_toc <- toc()
+fancyRpartPlot(train_rpart2$finalModel, sub = NULL)
+rpart2_imp <- varImp(train_rpart2)
+plot(rpart2_imp, top = 10, main="Var Imp optimized Classif Tree")
+
+y_rpart2 <- predict(train_rpart2, test_set.red, type="raw")
+rmse_rpart2 <- RMSE(y_rpart2, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results,
+                          data_frame(method="Classification Tree optimised", 
+                                     RMSE_Train = min(train_rpart2$results$RMSE),
+                                     RMSE_Test = rmse_rpart2,
+                                     Time = rp2_toc$toc-rp2_toc$tic))
+
+## 3.4. SVM
+tic("SVR")
 set.seed(1, sample.kind = "Rounding")
-train_lm_pca <- caret::train(SalePrice ~ ., data=train.pca, method="lm",
-                             trControl=trainControl(method = "cv", number=5))
-lm_toc_pca <- toc()
+tuneGrid <- expand.grid(
+  C = c(0.25, .5, 1),
+  sigma = 0.1
+)
+train_svm <- caret::train(SalePrice ~ ., data=train_set.red, method="svmRadial", preProcess = c("center", "scale"), trControl=trainControl(method = "cv", number=5),tuneGrid = tuneGrid)
+svm_toc <- toc()
+plot(train_svm)
+y_svm <- predict(train_svm, test_set.red)
+rmse_svm <- RMSE(y_svm, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "SVM", 
+                                                   RMSE_Train = min(train_svm$results$RMSE), 
+                                                   RMSE_Test = rmse_svm,
+                                                   Time = svm_toc$toc - svm_toc$tic))
 
-test.pca.results <- predict(train_lm_pca, test.pca)
-
-rmse_lm_pca <- RMSE(test.pca.results, test.pca$SalePrice)
-rmse_results <- bind_rows(rmse_results, data_frame(method = "LM PCA", 
-                                                   RMSE_Train = max(train_lm_pca$results$RMSE), 
-                                                   RMSE_Test = rmse_lm_pca,
-                                                   Time = lm_toc_pca$toc - lm_toc_pca$tic))
+## 3.3. LASSO REGRESSION
+tic("LASSO REGRESSION")
+set.seed(1, sample.kind = "Rounding")
+train_lasso <- caret::train(SalePrice ~ ., data=train_set.red, method="lasso")
+lasso_toc <- toc()
 
 ### REEESULTS
 set.seed(1, sample.kind = "Rounding")
-model_lm_redopt <- caret::train(SalePrice ~ ., data=main_red, method="lm",
-                                trControl=trainControl(method = "cv", number=5))
 
-results_lm_redopt <- predict(model_lm_redopt, tester_red)
-output <- cbind(tester_red, SalePrice_pred=round(results_lm_redopt, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
+
+results_lm <- predict(train_lm.red, test.red)
+output <- cbind(test.red, SalePrice_pred=round(results_lm, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
 
 write_csv(output, "output.csv")
 rmse_results <- bind_rows(rmse_results, data_frame(method = "LM RED OPT", 
