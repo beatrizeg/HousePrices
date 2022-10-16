@@ -13,6 +13,8 @@ if(!require(rattle)) install.packages("rattle", repos = "http://cran.us.r-projec
 if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
 if(!require(klaR)) install.packages("klaR", repos = "http://cran.us.r-project.org")
 if(!require(tictoc)) install.packages("tictoc", repos = "http://cran.us.r-project.org")
+if(!require(factoextra)) install.packages("factoextra")
+if(!require(FactoMineR)) install.packages("FactoMineR")
 
 library(tidyverse)
 library(stringr)
@@ -25,6 +27,8 @@ library(rattle)
 library(xgboost)
 library(klaR)
 library(tictoc)
+library(factoextra)
+library(FactoMineR)
 
 #loading databases
 url_train <- "https://raw.githubusercontent.com/beatrizeg/HousePrices/main/train.csv"
@@ -110,60 +114,116 @@ total$YrSold <- factor(total$YrSold, levels=c("2006","2007","2008","2009","2010"
 total$MoSold <- factor(total$MoSold, levels=c("1","2","3","4","5","6","7","8","9","10","11","12"))
 total$GarageCars <- factor(total$GarageCars, levels = c("0","1","2","3","4","5"))
 
+
 #check for predictors with near zero variablity
 no_var <- nearZeroVar(total, saveMetrics = TRUE)
 no_var
 
-main_m <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
-                                 LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
-                                 YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+train.var <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                                 Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                                 YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
                                  Foundation,BsmtQual,
-                                 BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
-                                 Heating,HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",GrLivArea,BsmtFullBath,
-                                 BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
+                                 BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                 HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",GrLivArea,BsmtFullBath,
+                                 BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
                                  Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
-                                 GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice != 0)
+                                 GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,
+                                 Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice != 0)
 
 
-tester_m <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, Utilities, LotConfig,
-                                 LandSlope,Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
-                                 YearRemodAdd,RoofStyle,RoofMatl,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
-                                 Foundation,BsmtQual,
-                                 BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
-                                 Heating,HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",GrLivArea,BsmtFullBath,
-                                 BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,Functional,
-                                 Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
-                                 GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,
-                                 Fence,MiscFeature,MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice == 0)
+test.var <- total %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                                    Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                                    YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                    Foundation,BsmtQual,
+                                    BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                    HeatingQC,CentralAir,Electrical,"1stFlrSF","2ndFlrSF",GrLivArea,BsmtFullBath,
+                                    BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                                    Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
+                                    GarageCond,PavedDrive,WoodDeckSF,OpenPorchSF,EnclosedPorch,"3SsnPorch",ScreenPorch,
+                                    Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice) %>% filter(SalePrice == 0)
 
-colnames(main_m)[39] <- "L1stFlrSF"
-colnames(main_m)[40] <- "L2ndFlrSF"
-colnames(main_m)[64] <- "L3SsnPorch"
+colnames(train.var)[33] <- "L1stFlrSF"
+colnames(train.var)[34] <- "L2ndFlrSF"
+colnames(train.var)[57] <- "L3SsnPorch"
 
-colnames(tester_m)[39] <- "L1stFlrSF"
-colnames(tester_m)[40] <- "L2ndFlrSF"
-colnames(tester_m)[64] <- "L3SsnPorch"
+colnames(test.var)[33] <- "L1stFlrSF"
+colnames(test.var)[34] <- "L2ndFlrSF"
+colnames(test.var)[57] <- "L3SsnPorch"
+
+train.mut <- train.var %>% mutate(SF1st2nd=L2ndFlrSF+L1stFlrSF,
+                                  BsmtBaths=BsmtFullBath+BsmtHalfBath/2,
+                                  GrBaths=FullBath+HalfBath/2,
+                                  OutPorch=OpenPorchSF+WoodDeckSF,
+                                  IndPorch=EnclosedPorch+L3SsnPorch+ScreenPorch) %>% 
+  dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                Foundation,BsmtQual,
+                BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                HeatingQC,CentralAir,Electrical,SF1st2nd,GrLivArea,BsmtBaths,
+                GrBaths,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
+                GarageCond,PavedDrive,OutPorch, IndPorch,
+                Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+  
+test.mut <- test.var %>% mutate(SF1st2nd=L2ndFlrSF+L1stFlrSF,
+           BsmtBaths=BsmtFullBath+BsmtHalfBath/2,
+           GrBaths=FullBath+HalfBath/2,
+           OutPorch=OpenPorchSF+WoodDeckSF,
+           IndPorch=EnclosedPorch+L3SsnPorch+ScreenPorch) %>% 
+            dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                Foundation,BsmtQual,
+                BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                HeatingQC,CentralAir,Electrical,SF1st2nd,GrLivArea,BsmtBaths,
+                GrBaths,BedroomAbvGr,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageCars,GarageArea,GarageQual,
+                GarageCond,PavedDrive,OutPorch, IndPorch,
+                Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+  
 
 ## 2.2. Studying correlation between variables <a name="cor"></a>
-main_m.cor <- main_m %>%
+train.cor <- train.mut %>%
   dplyr::select_if(is.numeric) %>%
   cor(.)
-corrplot(main_m.cor, type="lower", tl.cex = 0.5)
+corrplot(train.cor, type="lower", tl.cex = 0.5)
 
-write_csv(as.data.frame(main_m.cor), "main_cor.csv")
+write_csv(as.data.frame(train.cor), "traincor.csv")
 
-highlyCorrelated <- caret::findCorrelation(main_m.cor, cutoff=0.6, names = TRUE)
+highlyCorrelated <- caret::findCorrelation(train.cor, cutoff=0.6, names = TRUE)
 
-main_m.chisq <- main_m %>%
+train.afcor <- train.mut %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                Foundation,BsmtQual,
+                BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                HeatingQC,CentralAir,Electrical,GrLivArea,
+                GrBaths,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageArea,GarageQual,
+                GarageCond,PavedDrive,OutPorch, IndPorch,
+                Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
+test.afcor <- test.mut %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                                           Neighborhood,Condition1,BldgType,HouseStyle,OverallQual,OverallCond,YearBuilt,
+                                           YearRemodAdd,RoofStyle,Exterior1st,Exterior2nd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                           Foundation,BsmtQual,
+                                           BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                           HeatingQC,CentralAir,Electrical,GrLivArea,
+                                           GrBaths,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                                           Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageArea,GarageQual,
+                                           GarageCond,PavedDrive,OutPorch, IndPorch,
+                                           Fence,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
+train.chisq <- train.afcor %>%
   dplyr::select_if(function(col) is.character(col) | 
                      is.factor(col) | is.logical(col) |
                      all(col == .$SalePrice)) %>% dplyr::select(-.$Id)
 
-columns <- 1:ncol(main_m.chisq)
-vars <- names(main_m.chisq)[columns]
+columns <- 1:ncol(train.chisq)
+vars <- names(train.chisq)[columns]
 out <-  apply( combn(columns,2),2,function(x){
-  chisq.test(table(main_m.chisq[,x[1]],main_m.chisq[,x[2]]),correct=F)$p.value
+  chisq.test(table(train.chisq[,x[1]],train.chisq[,x[2]]),correct=F)$p.value
 })
 
 out <- cbind(as.data.frame(t(combn(vars,2))),out)
@@ -171,46 +231,95 @@ out <- cbind(as.data.frame(t(combn(vars,2))),out)
 out_dep <- out %>% filter(V2=="SalePrice") %>% filter(out<0.05) %>% arrange(out)
 out_ind <- out %>% filter(V2=="SalePrice") %>% filter(out>=0.05) %>% arrange(out)
 
-main_red <- main_m %>% mutate(SF1st2nd=L2ndFlrSF+L1stFlrSF,
-                              BsmtBaths=BsmtFullBath+BsmtHalfBath/2,
-                              GrBaths=FullBath+HalfBath/2,
-                              OutPorch=OpenPorchSF+WoodDeckSF,
-                              IndPorch=EnclosedPorch+L3SsnPorch+ScreenPorch) %>% 
-                        dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, LotConfig,
-                                      LandSlope,Neighborhood,OverallQual,OverallCond,YearBuilt,
-                                      YearRemodAdd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
-                                      Foundation,BsmtQual,BsmtCond,BsmtExposure,BsmtFinType1,GrLivArea,BsmtUnfSF,TotalBsmtSF,
-                                      Heating,CentralAir,BsmtBaths,GrBaths,KitchenAbvGr,KitchenQual,
-                                      Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,OutPorch,
-                                      IndPorch,PoolArea,
-                                      MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+train.afchisq <- train.afcor %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                                               Neighborhood,OverallQual,OverallCond,YearBuilt,
+                                               YearRemodAdd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                               Foundation,BsmtQual,
+                                               BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                               CentralAir,GrLivArea,
+                                               GrBaths,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                                               Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageArea,GarageQual,
+                                               OutPorch, IndPorch,
+                                               MoSold,YrSold,SaleType,SaleCondition,SalePrice)
 
-tester_red <- tester_m %>% mutate(SF1st2nd=L2ndFlrSF+L1stFlrSF,
-                              BsmtBaths=BsmtFullBath+BsmtHalfBath/2,
-                              GrBaths=FullBath+HalfBath/2,
-                              OutPorch=OpenPorchSF+WoodDeckSF,
-                              IndPorch=EnclosedPorch+L3SsnPorch+ScreenPorch) %>% 
-  dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LandContour, LotConfig,
-                LandSlope,Neighborhood,OverallQual,OverallCond,YearBuilt,
-                YearRemodAdd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
-                Foundation,BsmtQual,BsmtCond,BsmtExposure,BsmtFinType1,GrLivArea,BsmtUnfSF,TotalBsmtSF,
-                Heating,CentralAir,BsmtBaths,GrBaths,KitchenAbvGr,KitchenQual,
-                Fireplaces,FireplaceQu,GarageType,GarageFinish,GarageArea,GarageQual,OutPorch,
-                IndPorch,PoolArea,
-                MiscVal,MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+test.afchisq <- test.afcor %>% dplyr::select(Id, MSSubClass, MSZoning, LotFrontage, LotArea, LotShape, LotConfig,
+                                             Neighborhood,OverallQual,OverallCond,YearBuilt,
+                                             YearRemodAdd,MasVnrType,MasVnrArea,ExterQual,ExterCond,
+                                             Foundation,BsmtQual,
+                                             BsmtExposure,BsmtFinType1,BsmtFinSF1,BsmtUnfSF,TotalBsmtSF,
+                                             CentralAir,GrLivArea,
+                                             GrBaths,KitchenAbvGr,KitchenQual,TotRmsAbvGrd,
+                                             Fireplaces,FireplaceQu,GarageType,GarageYrBlt,GarageFinish,GarageArea,GarageQual,
+                                             OutPorch, IndPorch,
+                                             MoSold,YrSold,SaleType,SaleCondition,SalePrice)
+
+# PCA analysis
+
+train.pca <- train.afchisq %>%
+  dplyr::select_if(is.numeric) %>% dplyr::select(-Id,-SalePrice) %>%
+  prcomp(., center=TRUE, scale=TRUE)
+
+summary(train.pca)
+plot(train.pca)
+
+fviz_screeplot(train.pca, addlabels = TRUE)
+fviz_pca_var(train.pca, col.var = "black")
+
+train.pca.data <- data.frame(SalePrice=train.afchisq$SalePrice, train.pca$x)
+train.pca.data <- train.pca.data[,1:12]
+train.pca.data <- data.frame(MSSubClass=train.afchisq$MSSubClass, MSZoning=train.afchisq$MSZoning, LotShape=train.afchisq$LotShape,
+                             LotConfig=train.afchisq$LotConfig, Neighborhood=train.afchisq$Neighborhood, OverallQual=train.afchisq$OverallQual,
+                             OverallCond=train.afchisq$OverallCond, MasVnrType=train.afchisq$MasVnrType, ExterQual=train.afchisq$ExterQual,
+                             ExterCond=train.afchisq$ExterCond, Foundation=train.afchisq$Foundation, BsmtQual=train.afchisq$BsmtQual,
+                             BsmtExposure=train.afchisq$BsmtExposure, BsmtFinType1=train.afchisq$BsmtFinType1, CentralAir=train.afchisq$CentralAir,
+                             KitchenQual=train.afchisq$KitchenQual, FireplaceQu=train.afchisq$FireplaceQu, GarageType=train.afchisq$GarageType,
+                             GarageFinish=train.afchisq$GarageFinish, GarageQual=train.afchisq$GarageQual, MoSold=train.afchisq$MoSold, YrSold=train.afchisq$YrSold,
+                             SaleType=train.afchisq$SaleType, SaleCondition=train.afchisq$SaleCondition, train.pca.data)
 
 ## 2.3. Checking predictors effect
-main_m %>%
+train.afchisq %>%
   ggplot(aes(SalePrice)) + geom_histogram(binwidth=10000)
 
-#categorical dependent
-main_m %>% 
-  ggplot(aes(fct_infreq(ExterQual), SalePrice)) + geom_boxplot() +
-  ggtitle("ExterQual") + xlab("ExterQual")
+#categorical 
 
-main_m %>% 
-  ggplot(aes(fct_infreq(KitchenQual), SalePrice)) + geom_boxplot() +
-  ggtitle("KitchenQual") + xlab("KitchenQual")
+#MSSubClass
+train.afchisq %>% 
+  ggplot(aes(fct_infreq(MSSubClass), SalePrice)) + geom_dotplot(binwidth=10000, binaxis="y", stackdir="center") +
+  ggtitle("MSSubClass") + xlab("MSSubClass") #we can group together categories with low number of count
+
+table(train.afchisq$MSSubClass) %>% sort(decreasing = TRUE)
+
+total.afchisq <- rbind(train.afchisq,test.afchisq)
+
+total.afchisq <- total.afchisq %>% mutate (MSSubClass = as.factor(case_when(
+  MSSubClass=="20" ~ "20",
+  MSSubClass=="60" ~ "60",
+  MSSubClass=="50" ~ "50",
+  MSSubClass=="120"~"120",
+  MSSubClass=="30"~"30",
+  MSSubClass=="160"~"160",
+  MSSubClass=="70"~"70",
+  MSSubClass=="80"~"80",
+  MSSubClass=="90"~"90",
+  MSSubClass=="190"~"190",
+  TRUE ~ "Other"
+)))
+
+train.afchisq <- total.afchisq %>% filter(SalePrice != 0)
+test.afchisq <- total.afchisq %>% filter(SalePrice == 0)
+train.afchisq %>% 
+  ggplot(aes(fct_infreq(MSSubClass), SalePrice)) + geom_dotplot(binwidth=10000, binaxis="y", stackdir="center") +
+  ggtitle("MSSubClass") + xlab("MSSubClass")
+
+#Neighborhood and MSZoning
+train.afchisq %>% 
+  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_dotplot(binwidth=10000, binaxis="y", stackdir="center", aes(color=MSZoning)) +
+  ggtitle("Neighborhood") + xlab("Neighborhood") #we can disregard MSZoning feature as is correlated to Neighborhood feature
+
+train.afchisq %>% 
+  ggplot(aes(fct_infreq(Neighborhood), SalePrice)) + geom_boxplot() +
+  ggtitle("Neighborhood") + xlab("Neighborhood")
+
 
 main_m %>% 
   ggplot(aes(fct_infreq(Heating), SalePrice)) + geom_boxplot() +
@@ -273,6 +382,11 @@ set.seed(1, sample.kind = "Rounding")
 test_index_red <- createDataPartition(main_red$SalePrice, times=1, p=0.15, list=FALSE)
 train_set_red <- main_red[-test_index_red,] %>% dplyr::select(-Id)
 test_set_red <- main_red[test_index_red,] %>% dplyr::select(-Id)
+
+set.seed(1, sample.kind = "Rounding")
+test.pca.index <- createDataPartition(main.pca.data$SalePrice, times=1, p=0.15, list=FALSE)
+train.pca <- main.pca.data[-test.pca.index,]
+test.pca <- main.pca.data[test.pca.index,]
 
 ##2.5. Method
 
@@ -372,6 +486,22 @@ lm_imp_redopt <- varImp(train_lm_redopt)
 ImpMeasureopt <- data.frame(varImp(train_lm_redopt)$importance)
 capture.output(ImpMeasureopt, file="LM_IMP_REDOPT.csv")
 plot(lm_imp_redopt, top = 15, main="Variable Importance Linear Regression Red Opt")
+
+
+###LM after PCA
+tic("Logistic Regression PCA")
+set.seed(1, sample.kind = "Rounding")
+train_lm_pca <- caret::train(SalePrice ~ ., data=train.pca, method="lm",
+                             trControl=trainControl(method = "cv", number=5))
+lm_toc_pca <- toc()
+
+test.pca.results <- predict(train_lm_pca, test.pca)
+
+rmse_lm_pca <- RMSE(test.pca.results, test.pca$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "LM PCA", 
+                                                   RMSE_Train = max(train_lm_pca$results$RMSE), 
+                                                   RMSE_Test = rmse_lm_pca,
+                                                   Time = lm_toc_pca$toc - lm_toc_pca$tic))
 
 ### REEESULTS
 set.seed(1, sample.kind = "Rounding")
