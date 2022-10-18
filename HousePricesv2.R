@@ -632,7 +632,7 @@ lm_imp.red <- varImp(train_lm.red)
 plot(lm_imp.red, top = 10, main="Variable Importance Linear Regression")
 
 #glm
-tic("Generalized Logistic Regression CV5")
+tic("Generalized Linear Regression CV5")
 set.seed(1, sample.kind = "Rounding")
 train_glm.red <- caret::train(SalePrice ~ ., data=train_set.red, method="glm", preProc=c('center', 'scale'),
                              trControl=trainControl(method = "cv", number=5))
@@ -700,6 +700,52 @@ rmse_results <- bind_rows(rmse_results, data_frame(method = "GBM",
                                                    RMSE_Test = rmse_gbm,
                                                    Time = gbm_toc$toc - gbm_toc$tic))
 
+#gbm tuning
+nl = nrow(train_set.red)
+max(0.01, 0.1*min(1, nl/10000)) #max shrinkage
+floor(sqrt(NCOL(train_set.red))) #max interaction.depth
+
+trainControl = trainControl(method="repeatedcv", number=5, repeats = 3)
+gbmGrid <- expand.grid(interaction.depth=c(1,3,5),
+                       n.trees = c(150,1000,5000), #smaller the shrinkage, more num of trees (150t - 0.1s; 6000t - 0.1s)
+                       shrinkage=c(0.0005, 0.005, 0.01),
+                       n.minobsinnode=c(10))
+set.seed(1, sample.kind = "Rounding")
+train_fit_gbm <- caret::train(SalePrice ~ ., data=train_set.red, method="gbm", trControl=trainControl, tuneGrid=gbmGrid, metric="RMSE")
+
+#gbm optimized
+trainControl = trainControl(method="repeatedcv", number=5, repeats = 3)
+gbmGridop <- expand.grid(interaction.depth=c(5),
+                       n.trees = c(500,1000), #smaller the shrinkage, more num of trees (150t - 0.1s; 6000t - 0.1s)
+                       shrinkage=c(0.01),
+                       n.minobsinnode=c(10))
+set.seed(1, sample.kind = "Rounding")
+train_op_gbm <- caret::train(SalePrice ~ ., data=train_set.red, method="gbm", trControl=trainControl, tuneGrid=gbmGridop, metric="RMSE")
+
+#run optimal model
+gbmGridf <- expand.grid(interaction.depth=c(5),
+                         n.trees = c(1000), #smaller the shrinkage, more num of trees (150t - 0.1s; 6000t - 0.1s)
+                         shrinkage=c(0.01),
+                         n.minobsinnode=c(10))
+set.seed(1, sample.kind = "Rounding")
+train_f_gbm <- caret::train(SalePrice ~ ., data=train_set.red, method="gbm", trControl=trainControl, tuneGrid=gbmGridf, metric="RMSE")
+y_gbmf <- predict(train_f_gbm, test_set.red)
+rmse_gbmf <- RMSE(y_gbmf, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method = "GBM F", 
+                                                   RMSE_Train = min(train_f_gbm$results$RMSE), 
+                                                   RMSE_Test = rmse_gbmf,
+                                                   Time = 0))
+
+#submission gbm
+train.red <- train.red %>% dplyr::select(-Id)
+set.seed(1, sample.kind = "Rounding")
+train_s_gbm <- caret::train(SalePrice ~ ., data=train.red, method="gbm", trControl=trainControl, tuneGrid=gbmGridf, metric="RMSE")
+
+results <- predict(train_s_gbm, test.red)
+output <- cbind(test.red, SalePrice_pred=round(results, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
+# 
+write_csv(output, "output.csv")
+
 #xgboost
 tic("XGBoost")
 set.seed(1, sample.kind = "Rounding")
@@ -732,7 +778,7 @@ set.seed(1, sample.kind = "Rounding")
 trainControl = trainControl(method="repeatedcv", number=5, repeats = 3)
 metric = "RMSE"
 grid = expand.grid(.committees=seq(10,110,by=30), .neighbors = c(1,3,5,7,9))
-tune.cubist <- caret::train(SalePrice ~ ., data=train_set.red, method="cubist", preProcess = c("center", "scale"), trControl = trainControl, tuneGrid=grid, metric=metric)
+tune.cubist <- caret::train(SalePrice ~ ., data=train_set.red, method="cubist", trControl = trainControl, tuneGrid=grid, metric=metric)
 plot(tune.cubist)
 
 set.seed(1, sample.kind = "Rounding")
@@ -770,7 +816,7 @@ rmse_results <- bind_rows(rmse_results, data_frame(method="XGB Fit",
                                                    RMSE_Train=min(tune.xgb$results$RMSE),
                                                    RMSE_Test=rmse_xgb_fit,
                                                    Time=0))
-#XGB SUBMISSION
+#XGB
 xgbgrid=expand.grid(nrounds=c(400),
                     max_depth=c(3),
                     colsample_bytree=c(0.5),
@@ -779,14 +825,57 @@ xgbgrid=expand.grid(nrounds=c(400),
                     min_child_weight=c(1),
                     subsample=c(1))
 
+set.seed(1, sample.kind = "Rounding")
+tune.xgb <- caret::train(SalePrice ~ ., data=train_set.red, method="xgbTree", trControl=trainControl, tuneGrid=xgbgrid)
+y_xgb <- predict(tune.xgb, test_set.red)
+rmse_xgb <- RMSE(y_xgb, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method="XGB",
+                                                   RMSE_Train=min(tune.xgb$results$RMSE),
+                                                   RMSE_Test=rmse_xgb,
+                                                   Time=0))
+
+#XGB optimizing eta(0.2) min_child_weight (1)
+xgbgridop = expand.grid(nrounds=c(400),
+                      max_depth=c(3,5),
+                      colsample_bytree = c(0.5),
+                      eta=c(0.05,0.1,0.2),
+                      gamma=c(0),
+                      min_child_weight=c(1,3,5),
+                      subsample=c(1))
+set.seed(1, sample.kind = "Rounding")
+tune.xgbop <- caret::train(SalePrice ~ ., data=train_set.red, method="xgbTree", trControl=trainControl, tuneGrid=xgbgridop)
+plot(tune.xgbop)
+tune.xgbop$bestTune
+y_xgbop <- predict(tune.xgbop, test_set.red)
+rmse_xgbop <- RMSE(y_xgbop, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method="XGB OPT",
+                                                   RMSE_Train=min(tune.xgbop$results$RMSE),
+                                                   RMSE_Test=rmse_xgbop,
+                                                   Time=0))
+#XGB SUBMISSION
+xgbgrid=expand.grid(nrounds=c(400),
+                    max_depth=c(3),
+                    colsample_bytree=c(0.5),
+                    eta=c(0.05),
+                    gamma=c(0),
+                    min_child_weight=c(1),
+                    subsample=c(1))
+
 train.red <- train.red %>% dplyr::select(-Id)
 set.seed(1, sample.kind = "Rounding")
 tune.xgb <- caret::train(SalePrice ~ ., data=train.red, method="xgbTree", trControl=trainControl, tuneGrid=xgbgrid)
 
-# results <- predict(tune.xgb, test.red)
-# output <- cbind(test.red, SalePrice_pred=round(results, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
+y_xgb <- predict(tune.xgb, test_set.red)
+rmse_xgb <- RMSE(y_xgb, test_set.red$SalePrice)
+rmse_results <- bind_rows(rmse_results, data_frame(method="XGB",
+                                                   RMSE_Train=min(tune.xgb$results$RMSE),
+                                                   RMSE_Test=rmse_xgb,
+                                                   Time=0))
+
+results <- predict(tune.xgb, test.red)
+output <- cbind(test.red, SalePrice_pred=round(results, digits = 6)) %>% dplyr::select (Id, SalePrice = SalePrice_pred)
 # 
-# write_csv(output, "output.csv")
+write_csv(output, "output.csv")
 
 
 ### 3.1.2. LR on train.red, Repeated Cross Validation
